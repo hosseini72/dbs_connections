@@ -384,7 +384,7 @@ def validate_pool_config(config: BasePoolConfig) -> None:
     if config.timeout <= 0:
         raise ValueError("timeout must be positive")
 
-    if config.connection_timeout <= 0:
+    if config.connection_timeout is not None and config.connection_timeout <= 0:
         raise ValueError("connection_timeout must be positive")
 
     if config.max_overflow < 0:

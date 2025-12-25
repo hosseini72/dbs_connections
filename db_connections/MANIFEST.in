@@ -1,0 +1,48 @@
+# Include license file
+include LICENSE
+include LICENCE
+
+# Include README
+include README.md
+
+# Include CHANGELOG if it exists
+include CHANGELOG.md
+
+# Include all Python source files
+recursive-include db_connections *.py
+
+# Include package data (if any)
+recursive-include db_connections/scr *.py
+
+# Exclude test files
+global-exclude test_*.py
+global-exclude *_test.py
+global-exclude tests/
+
+# Exclude development files
+global-exclude .git*
+global-exclude .pytest_cache
+global-exclude .mypy_cache
+global-exclude .ruff_cache
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude .DS_Store
+global-exclude *.egg-info
+global-exclude build/
+global-exclude dist/
+global-exclude .tox/
+global-exclude .venv/
+global-exclude venv/
+global-exclude env/
+
+# Exclude documentation source (keep only built docs if needed)
+prune docs/
+prune examples/
+prune scripts/
+
+# Exclude setup guides from package (they're in the repo but not needed in package)
+prune scr/all_db_connectors/connectors/*/Setup_guide.md
+prune scr/all_db_connectors/connectors/*/*_usage.py
+
