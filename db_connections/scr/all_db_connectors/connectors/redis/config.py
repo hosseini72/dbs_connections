@@ -263,7 +263,9 @@ class RedisPoolConfig(BasePoolConfig):
             params["ssl_check_hostname"] = self.ssl_check_hostname
         
         # Redis-specific settings
-        params["retry_on_timeout"] = self.retry_on_timeout
+        # Note: retry_on_timeout is deprecated in redis-py 6.0+ but kept for compatibility
+        if self.retry_on_timeout:
+            params["retry_on_timeout"] = self.retry_on_timeout
         if self.retry_on_error:
             params["retry_on_error"] = self.retry_on_error
         

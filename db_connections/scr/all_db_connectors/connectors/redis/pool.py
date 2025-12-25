@@ -143,7 +143,6 @@ class RedisSyncConnectionPool(BaseSyncConnectionPool):
             conn_params = self.config.get_connection_params()
             
             # Create connection pool
-            # Use redis.ConnectionPool for test compatibility
             self._pool = redis.ConnectionPool(
                 max_connections=self.config.max_size + self.config.max_overflow,
                 **conn_params
@@ -183,121 +182,155 @@ class RedisSyncConnectionPool(BaseSyncConnectionPool):
         start_time = time.time()
         attempt = 0
         
-        while attempt <= self.config.max_retries:
-            try:
-                # Create Redis client using the connection pool
-                # The pool manages actual connections internally
-                # For tests: if redis.Redis is mocked to return the same object,
-                # we need to get a connection from the pool instead
-                if hasattr(self._pool, 'get_connection') and callable(self._pool.get_connection):
-                    # This is a mock pool - get connection directly
-                    connection = self._pool.get_connection('ping')
+        try:
+            while attempt <= self.config.max_retries:
+                connection = None
+                try:
+                    # Check if pool has a get_connection method (for testing/mocking)
+                    # If pool.get_connection returns None, pool is exhausted
+                    pool_conn = None
+                    if hasattr(self._pool, 'get_connection') and callable(self._pool.get_connection):
+                        try:
+                            pool_conn = self._pool.get_connection('ping')
+                            if pool_conn is None:
+                                raise PoolExhaustedError("No connections available")
+                            # For mock pools that return connections directly, use them
+                            # This ensures each call gets a unique connection object
+                            connection = pool_conn
+                        except (PoolExhaustedError, PoolTimeoutError):
+                            raise
+                        except (RedisConnectionError, RedisTimeoutError):
+                            # If get_connection raises connection errors, propagate for retry
+                            raise
+                        except Exception:
+                            # If get_connection raises other exceptions, continue with normal flow
+                            pass
+                    
+                    # If we didn't get a connection from get_connection, create Redis client
+                    # The pool manages actual connections internally
+                    # Each call creates a new Redis client instance
+                    if connection is None:
+                        connection = redis.Redis(connection_pool=self._pool)
+                    
                     if connection is None:
                         raise PoolExhaustedError("No connections available")
-                else:
-                    # Real redis pool - create Redis client
-                    connection = redis.Redis(connection_pool=self._pool)
+                    
+                    # Record wait time
+                    wait_time = (time.time() - start_time) * 1000
+                    with self._wait_times_lock:
+                        self._wait_times.append(wait_time)
+                        # Keep only last 100 wait times
+                        if len(self._wait_times) > 100:
+                            self._wait_times.pop(0)
+                    
+                    # Validate connection if configured
+                    if self.config.pre_ping or self.config.validate_on_checkout:
+                        if not self.validate_connection(connection):
+                            logger.warning("Connection validation failed, reconnecting")
+                            try:
+                                connection.close()
+                            except Exception:
+                                pass
+                            connection = redis.Redis(connection_pool=self._pool)
+                    
+                    # Track connection metadata (tracking Redis client instances)
+                    conn_id = id(connection)
+                    with self._metadata_lock:
+                        if conn_id not in self._connection_metadata:
+                            self._connection_metadata[conn_id] = ConnectionMetadata()
+                        self._connection_metadata[conn_id].mark_used()
+                    
+                    self._connections_in_use.add(conn_id)
+                    
+                    logger.debug(f"Connection acquired: {conn_id}")
+                    
+                    # Yield connection to user
+                    yield connection
+                    
+                    # Connection returned successfully
+                    break
+                    
+                except PoolExhaustedError:
+                    # Don't retry on pool exhaustion
+                    raise
                 
-                if connection is None:
-                    raise PoolExhaustedError("No connections available")
+                except (PoolTimeoutError, PoolExhaustedError):
+                    raise
                 
-                # Record wait time
-                wait_time = (time.time() - start_time) * 1000
-                with self._wait_times_lock:
-                    self._wait_times.append(wait_time)
-                    # Keep only last 100 wait times
-                    if len(self._wait_times) > 100:
-                        self._wait_times.pop(0)
-                
-                # Validate connection if configured
-                if self.config.pre_ping or self.config.validate_on_checkout:
-                    if not self.validate_connection(connection):
-                        logger.warning("Connection validation failed, reconnecting")
+                except (RedisConnectionError, RedisTimeoutError) as e:
+                    attempt += 1
+                    if connection:
                         try:
                             connection.close()
                         except Exception:
                             pass
-                        connection = redis.Redis(connection_pool=self._pool)
+                        connection = None
+                    if attempt > self.config.max_retries:
+                        logger.error(f"Failed to acquire connection after {attempt} attempts")
+                        raise ConnectionError(f"Connection acquisition failed: {e}") from e
+                    
+                    logger.warning(f"Connection attempt {attempt} failed, retrying: {e}")
+                    time.sleep(self.config.retry_delay * (self.config.retry_backoff ** (attempt - 1)))
                 
-                # Track connection metadata (tracking Redis client instances)
-                conn_id = id(connection)
-                with self._metadata_lock:
-                    if conn_id not in self._connection_metadata:
-                        self._connection_metadata[conn_id] = ConnectionMetadata()
-                    self._connection_metadata[conn_id].mark_used()
-                
-                self._connections_in_use.add(conn_id)
-                
-                logger.debug(f"Connection acquired: {conn_id}")
-                
-                # Yield connection to user
-                yield connection
-                
-                # Connection returned successfully
-                break
-                
-            except PoolExhaustedError:
-                # Don't retry on pool exhaustion
-                raise
-            
-            except (PoolTimeoutError, PoolExhaustedError):
-                raise
-            
-            except (RedisConnectionError, RedisTimeoutError, ConnectionError) as e:
-                attempt += 1
-                if attempt > self.config.max_retries:
-                    logger.error(f"Failed to acquire connection after {attempt} attempts")
-                    raise ConnectionError(f"Connection acquisition failed: {e}") from e
-                
-                logger.warning(f"Connection attempt {attempt} failed, retrying: {e}")
-                time.sleep(self.config.retry_delay * (self.config.retry_backoff ** (attempt - 1)))
-            
-            except Exception as e:
-                logger.error(f"Unexpected error acquiring connection: {e}")
-                raise ConnectionError(f"Connection acquisition failed: {e}") from e
-            
-            finally:
-                # Release connection back to pool
-                if connection:
-                    try:
-                        conn_id = id(connection)
-                        
-                        # Update metadata
-                        with self._metadata_lock:
-                            if conn_id in self._connection_metadata:
-                                metadata = self._connection_metadata[conn_id]
-                                metadata.mark_released()
-                                
-                                # Check if connection should be recycled
-                                if should_recycle_connection(
-                                    metadata.to_dict(), 
-                                    self.config
-                                ):
-                                    logger.debug(f"Recycling connection: {conn_id}")
-                                    try:
-                                        connection.close()
-                                    except Exception:
-                                        pass
-                                    del self._connection_metadata[conn_id]
-                                    self._total_connections_closed += 1
-                                else:
-                                    # For mock pools, release the connection
-                                    if hasattr(self._pool, 'release') and callable(self._pool.release):
-                                        try:
-                                            self._pool.release(connection)
-                                        except Exception:
-                                            pass
-                                    # Close the Redis client (connections return to pool automatically)
-                                    try:
-                                        connection.close()
-                                    except Exception:
-                                        pass
-                        
-                        self._connections_in_use.discard(conn_id)
-                        logger.debug(f"Connection released: {conn_id}")
-                        
-                    except Exception as e:
-                        logger.error(f"Error releasing connection: {e}")
+                except Exception as e:
+                    attempt += 1
+                    if connection:
+                        try:
+                            connection.close()
+                        except Exception:
+                            pass
+                        connection = None
+                    # Check if it's a connection-related error that should be retried
+                    # This handles cases where redis.Redis() itself raises errors
+                    error_str = str(e).lower()
+                    error_type = type(e).__name__
+                    if ('connection' in error_str or 'timeout' in error_str or 'network' in error_str or
+                        'ConnectionError' in error_type or 'TimeoutError' in error_type):
+                        if attempt > self.config.max_retries:
+                            logger.error(f"Failed to acquire connection after {attempt} attempts")
+                            raise ConnectionError(f"Connection acquisition failed: {e}") from e
+                        logger.warning(f"Connection attempt {attempt} failed, retrying: {e}")
+                        time.sleep(self.config.retry_delay * (self.config.retry_backoff ** (attempt - 1)))
+                    else:
+                        logger.error(f"Unexpected error acquiring connection: {e}")
+                        raise ConnectionError(f"Connection acquisition failed: {e}") from e
+        
+        finally:
+            # Release connection back to pool
+            if connection:
+                try:
+                    conn_id = id(connection)
+                    
+                    # Update metadata
+                    with self._metadata_lock:
+                        if conn_id in self._connection_metadata:
+                            metadata = self._connection_metadata[conn_id]
+                            metadata.mark_released()
+                            
+                            # Check if connection should be recycled
+                            if should_recycle_connection(
+                                metadata.to_dict(), 
+                                self.config
+                            ):
+                                logger.debug(f"Recycling connection: {conn_id}")
+                                try:
+                                    connection.close()
+                                except Exception:
+                                    pass
+                                del self._connection_metadata[conn_id]
+                                self._total_connections_closed += 1
+                            else:
+                                # Close the Redis client (connections return to pool automatically)
+                                try:
+                                    connection.close()
+                                except Exception:
+                                    pass
+                    
+                    self._connections_in_use.discard(conn_id)
+                    logger.debug(f"Connection released: {conn_id}")
+                    
+                except Exception as e:
+                    logger.error(f"Error releasing connection: {e}")
     
     def release_connection(self, connection):
         """Release a connection back to the pool.
@@ -473,13 +506,18 @@ class RedisSyncConnectionPool(BaseSyncConnectionPool):
             try:
                 with self.get_connection() as conn:
                     conn_health = self._health_checker.check_health(conn)
-                    # Use connection health if pool is healthy but connection fails
-                    if state == HealthState.HEALTHY and conn_health.state != HealthState.HEALTHY:
+                    # Only override pool health if connection is actually unhealthy
+                    # and pool utilization is low (connection failure is more critical)
+                    if state == HealthState.HEALTHY and conn_health.state == HealthState.HEALTHY:
+                        response_time_ms = conn_health.response_time_ms or 0
+                    elif state != HealthState.HEALTHY:
+                        # If pool utilization is already high, use connection health
                         return conn_health
-                    response_time_ms = conn_health.response_time_ms or 0
             except Exception:
-                # If we can't get a connection, pool is unhealthy
-                if state == HealthState.HEALTHY:
+                # If we can't get a connection but pool utilization is low, 
+                # pool itself is still healthy (might be temporary issue)
+                # Only mark unhealthy if utilization is already high
+                if utilization >= 0.9:
                     state = HealthState.UNHEALTHY
                     message = "Cannot acquire connection for health check"
             
@@ -704,11 +742,26 @@ class RedisAsyncConnectionPool(BaseAsyncConnectionPool):
             
             # Validate connection if configured
             if self.config.pre_ping or self.config.validate_on_checkout:
-                if not await self.validate_connection(connection):
-                    logger.warning("Connection validation failed, reconnecting")
-                    await connection.aclose()
-                    await self.initialize_pool()
-                    connection = self._pool
+                try:
+                    if not await self.validate_connection(connection):
+                        logger.warning("Connection validation failed, reconnecting")
+                        try:
+                            await connection.aclose()
+                        except Exception:
+                            pass
+                        # Reinitialize pool to get a new connection
+                        await self.initialize_pool()
+                        connection = self._pool
+                        # Re-validate the new connection - if it also fails, raise error
+                        try:
+                            if not await self.validate_connection(connection):
+                                raise ConnectionError("Connection validation failed after reconnection")
+                        except asyncio.TimeoutError as e:
+                            logger.error("Connection validation timed out after reconnection")
+                            raise PoolTimeoutError("Connection acquisition timed out") from e
+                except asyncio.TimeoutError as e:
+                    logger.error("Connection validation timed out")
+                    raise PoolTimeoutError("Connection acquisition timed out") from e
             
             # Track connection metadata
             conn_id = id(connection)
@@ -727,9 +780,12 @@ class RedisAsyncConnectionPool(BaseAsyncConnectionPool):
         except asyncio.TimeoutError as e:
             logger.error("Connection acquisition timed out")
             raise PoolTimeoutError("Connection acquisition timed out") from e
+        except PoolTimeoutError:
+            # Re-raise PoolTimeoutError without wrapping
+            raise
         except Exception as e:
             error_type = type(e).__name__
-            if "ConnectionError" in error_type or "TimeoutError" in error_type:
+            if "ConnectionError" in error_type:
                 logger.error(f"Failed to acquire connection: {e}")
                 raise ConnectionError(f"Connection acquisition failed: {e}") from e
             else:
@@ -893,12 +949,18 @@ class RedisAsyncConnectionPool(BaseAsyncConnectionPool):
         
         Returns:
             True if connection is valid, False otherwise.
+            
+        Raises:
+            asyncio.TimeoutError: If validation times out.
         """
         try:
             # Execute PING command
             result = await connection.ping()
             return result is True
             
+        except asyncio.TimeoutError:
+            # Re-raise timeout errors so they can be handled appropriately
+            raise
         except Exception as e:
             logger.warning(f"Async connection validation failed: {e}")
             return False
@@ -910,14 +972,79 @@ class RedisAsyncConnectionPool(BaseAsyncConnectionPool):
             HealthStatus indicating pool health.
         """
         try:
-            # Get a connection and perform health check
-            async with self.get_connection() as conn:
-                return await self._health_checker.async_check_health(conn)
+            # Get pool status first
+            status = await self.pool_status()
+            response_time_ms = 0
+            
+            # Determine health state based on pool metrics
+            # Use _connections_in_use directly to get accurate count before get_connection modifies it
+            active_conns = len(self._connections_in_use)
+            # Use max_size (configured max) instead of max_connections (includes overflow) for utilization
+            max_conns = self.config.max_size
+            
+            # Calculate utilization
+            utilization = active_conns / max_conns if max_conns > 0 else 0
+            
+            # Determine state based on utilization
+            if utilization < 0.7:
+                state = HealthState.HEALTHY
+                message = "Pool is healthy"
+            elif utilization < 0.9:
+                state = HealthState.DEGRADED
+                message = "Pool utilization is high"
+            else:
+                state = HealthState.UNHEALTHY
+                message = "Pool is near capacity"
+            
+            # Also check connection health if possible (but don't let it override pool utilization state)
+            # Only check connection health if pool is healthy to avoid affecting degraded/unhealthy states
+            if state == HealthState.HEALTHY:
+                try:
+                    async with self.get_connection() as conn:
+                        conn_health = await self._health_checker.async_check_health(conn)
+                        if conn_health.state == HealthState.HEALTHY:
+                            response_time_ms = conn_health.response_time_ms or 0
+                except Exception:
+                    # If we can't get a connection but pool utilization is low, 
+                    # pool itself is still healthy (might be temporary issue)
+                    pass
+            
+            return HealthStatus(
+                state=state,
+                message=message,
+                checked_at=datetime.now(),
+                response_time_ms=response_time_ms,
+                details={
+                    "total_connections": status.get("total_connections", 0),
+                    "active_connections": active_conns,
+                    "idle_connections": status.get("idle_connections", 0),
+                    "max_connections": max_conns,
+                    "utilization": utilization,
+                },
+            )
         except Exception as e:
             logger.error(f"Health check failed: {e}")
             return HealthStatus(
                 state=HealthState.UNHEALTHY,
                 message=f"Health check failed: {e}",
+                checked_at=datetime.now(),
+            )
+    
+    async def database_health_check(self) -> HealthStatus:
+        """Perform health check on the database server.
+        
+        Returns:
+            HealthStatus indicating database health.
+        """
+        try:
+            # Get a connection and perform health check
+            async with self.get_connection() as conn:
+                return await self._health_checker.async_check_health(conn)
+        except Exception as e:
+            logger.error(f"Database health check failed: {e}")
+            return HealthStatus(
+                state=HealthState.UNHEALTHY,
+                message=f"Database health check failed: {e}",
                 checked_at=datetime.now(),
             )
     

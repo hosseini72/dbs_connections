@@ -75,6 +75,10 @@ class MockAsyncRedisConnection:
     async def close(self):
         """Mock close."""
         self.closed = True
+    
+    async def aclose(self):
+        """Mock async close."""
+        self.closed = True
 
 
 class MockAsyncRedisConnectionPool:
@@ -85,6 +89,17 @@ class MockAsyncRedisConnectionPool:
         self.connections = []
         self.in_use = set()
         self.closed = False
+        # Add methods to make it behave like a Redis client
+        self._mock_conn = MockAsyncRedisConnection()
+    
+    async def ping(self):
+        """Mock ping - delegate to internal connection."""
+        return await self._mock_conn.ping()
+    
+    async def aclose(self):
+        """Mock async close."""
+        self.closed = True
+        self.in_use.clear()
 
     async def get_connection(self, command_name, *keys, **options):
         """Get connection from pool."""
@@ -130,15 +145,12 @@ class TestAsyncRedisConnectionPoolInit(unittest.TestCase):
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -156,14 +168,13 @@ class TestAsyncRedisConnectionPoolInit(unittest.TestCase):
 
     def test_init_validates_config(self):
         """Test pool validates configuration on init."""
-        invalid_config = RedisPoolConfig(
-            host="localhost",
-            max_connections=-1  # Invalid
-        )
-
         with self.assertRaisesRegex(
             ValueError, "max_connections must be positive"
         ):
+            invalid_config = RedisPoolConfig(
+                host="localhost",
+                max_connections=-1  # Invalid
+            )
             RedisAsyncConnectionPool(invalid_config)
 
     def test_repr(self):
@@ -197,15 +208,12 @@ class TestAsyncRedisConnectionPoolInitialization(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -231,16 +239,14 @@ class TestAsyncRedisConnectionPoolInitialization(
 
     async def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
-        async def failing_create_pool(**kwargs):
+        def failing_create_redis(**kwargs):
             raise Exception("Connection failed")
 
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        with patch(patch_path) as mock_module:
-            mock_module.ConnectionPool = failing_create_pool
-
+        with patch(patch_path, side_effect=failing_create_redis):
             pool = RedisAsyncConnectionPool(self.redis_config)
 
             with self.assertRaisesRegex(
@@ -282,15 +288,12 @@ class TestAsyncRedisConnectionPoolGetConnection(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -370,23 +373,26 @@ class TestAsyncRedisConnectionPoolGetConnection(
 
     async def test_get_connection_timeout(self):
         """Test connection acquisition timeout."""
-        async def timeout_acquire(timeout=None):
+        # Create a mock that always times out on ping (even after reconnection)
+        async def timeout_ping():
             raise asyncio.TimeoutError("Timeout")
-
-        mock_pool = MagicMock()
-        mock_pool.get_connection = timeout_acquire
-
-        async def create_pool_mock(**kwargs):
-            return mock_pool
+        
+        mock_redis = MockAsyncRedisConnection()
+        mock_redis.ping = timeout_ping
 
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        with patch(patch_path) as mock_module:
-            mock_module.ConnectionPool = create_pool_mock
-
-            pool = RedisAsyncConnectionPool(self.redis_config)
+        # Make sure reconnection also returns the same mock that times out
+        # Use side_effect to return the same mock each time initialize_pool is called
+        with patch(patch_path, return_value=mock_redis) as mock_async_redis:
+            config = RedisPoolConfig(
+                host="localhost",
+                validate_on_checkout=True,  # Enable validation
+                pre_ping=False  # Disable pre_ping to avoid double validation
+            )
+            pool = RedisAsyncConnectionPool(config)
             await pool.initialize_pool()
 
             with self.assertRaisesRegex(
@@ -417,15 +423,12 @@ class TestAsyncRedisConnectionPoolRelease(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -467,15 +470,12 @@ class TestAsyncRedisConnectionPoolClose(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -528,15 +528,12 @@ class TestAsyncRedisConnectionPoolStatus(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -618,15 +615,12 @@ class TestAsyncRedisConnectionPoolValidation(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -680,15 +674,12 @@ class TestAsyncRedisConnectionPoolHealth(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -711,14 +702,17 @@ class TestAsyncRedisConnectionPoolHealth(
         pool = RedisAsyncConnectionPool(self.redis_config)
         await pool.initialize_pool()
 
-        # Simulate high utilization
+        # Simulate high utilization (8 out of 10 = 80%, which is DEGRADED)
+        # Note: health_check calculates utilization before calling get_connection,
+        # using len(_connections_in_use) directly. With max_connections=10,
+        # 8/10 = 0.8 = 80% utilization, which should be DEGRADED (0.7 <= 0.8 < 0.9)
         pool._connections_in_use = set(range(8))  # 8 out of 10
 
         health = await pool.health_check()
 
-        self.assertIn(
-            health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        # Should be DEGRADED (80% utilization)
+        self.assertEqual(health.state, HealthState.DEGRADED)
+        self.assertIn("utilization", health.message.lower())
 
     async def test_database_health_check(self):
         """Test database health check."""
@@ -759,15 +753,12 @@ class TestAsyncRedisConnectionPoolContextManager(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
@@ -825,15 +816,12 @@ class TestAsyncRedisConnectionPoolConcurrency(
 
     def _setup_mock_async_redis_module(self):
         """Set up mock async redis module."""
-        async def create_pool_mock(**kwargs):
-            return self.mock_async_redis_pool
-
+        # Patch AsyncRedis to return our mock pool
         patch_path = (
             "db_connections.scr.all_db_connectors.connectors."
-            "redis.pool.redis.asyncio"
+            "redis.pool.AsyncRedis"
         )
-        self.mock_module = patch(patch_path).start()
-        self.mock_module.ConnectionPool = create_pool_mock
+        self.mock_module = patch(patch_path, return_value=self.mock_async_redis_pool).start()
 
     def tearDown(self):
         """Clean up patches."""
