@@ -1,6 +1,6 @@
 #!/bin/bash
 # scripts/run_tests.sh
-# Run different types of tests for db_connections
+# Run different types of tests for db_connections using unittest
 
 set -e
 
@@ -34,10 +34,9 @@ print_info() {
     echo -e "${BLUE}[i]${NC} $1"
 }
 
-# Check if pytest is installed
-if ! command -v pytest &> /dev/null; then
-    print_error "pytest is not installed!"
-    echo "Install with: pip install -e \".[test]\""
+# Check if Python is available
+if ! command -v python &> /dev/null; then
+    print_error "Python is not installed!"
     exit 1
 fi
 
@@ -47,7 +46,7 @@ VERBOSE="${2:-}"
 
 # Add verbose flag if provided
 if [ "$VERBOSE" = "-v" ] || [ "$VERBOSE" = "-vv" ]; then
-    VERBOSE_FLAG="$VERBOSE"
+    VERBOSE_FLAG="-v"
 else
     VERBOSE_FLAG=""
 fi
@@ -55,7 +54,14 @@ fi
 case $TEST_TYPE in
     unit)
         print_info "Running unit tests..."
-        pytest tests/unit -m unit $VERBOSE_FLAG
+        print_info "Running connector tests..."
+        python -m unittest discover -s tests/unit/connectors -p "test_*.py" $VERBOSE_FLAG
+        
+        # Run core tests if the file exists
+        if [ -f "tests/unit/test_core.py" ]; then
+            print_info "Running core tests..."
+            python -m unittest tests.unit.test_core $VERBOSE_FLAG
+        fi
         ;;
     
     integration)
@@ -63,7 +69,7 @@ case $TEST_TYPE in
         print_warning "Make sure Docker containers are running!"
         echo ""
         print_info "Start containers with:"
-        echo "  docker-compose -f tests/integration/docker-compose.yml up -d"
+        echo "  docker-compose -f tests/unit/integration/docker-compose.yml up -d"
         echo ""
         
         # Check if PostgreSQL container is running
@@ -72,60 +78,71 @@ case $TEST_TYPE in
         else
             print_error "PostgreSQL container not found!"
             print_info "Starting containers..."
-            docker-compose -f tests/integration/docker-compose.yml up -d
+            docker-compose -f tests/unit/integration/docker-compose.yml up -d
             sleep 5
         fi
         
-        pytest tests/integration -m integration $VERBOSE_FLAG
+        python -m unittest discover -s tests/unit/integration -p "test_*.py" $VERBOSE_FLAG
         ;;
     
     postgres)
         print_info "Running PostgreSQL-specific tests..."
-        pytest tests/unit/connectors/test_postgres*.py tests/integration/test_postgres*.py -m postgres $VERBOSE_FLAG
+        python -m unittest discover -s tests/unit/connectors/postgres -p "test_*.py" $VERBOSE_FLAG
+        python -m unittest discover -s tests/unit/integration -p "test_postgres*.py" $VERBOSE_FLAG
+        ;;
+    
+    redis)
+        print_info "Running Redis-specific tests..."
+        python -m unittest discover -s tests/unit/connectors/redis -p "test_*.py" $VERBOSE_FLAG
+        ;;
+    
+    mongodb)
+        print_info "Running MongoDB-specific tests..."
+        python -m unittest discover -s tests/unit/connectors/mongodb -p "test_*.py" $VERBOSE_FLAG
+        ;;
+    
+    clickhouse)
+        print_info "Running ClickHouse-specific tests..."
+        python -m unittest discover -s tests/unit/connectors/clickhouse -p "test_*.py" $VERBOSE_FLAG
+        ;;
+    
+    rabbitmq)
+        print_info "Running RabbitMQ-specific tests..."
+        python -m unittest discover -s tests/unit/connectors/rabbitmq -p "test_*.py" $VERBOSE_FLAG
+        ;;
+    
+    neo4j)
+        print_info "Running Neo4j-specific tests..."
+        python -m unittest discover -s tests/unit/connectors/neo4j -p "test_*.py" $VERBOSE_FLAG
         ;;
     
     config)
         print_info "Running configuration tests..."
-        pytest tests/unit/connectors/test_postgres_config.py $VERBOSE_FLAG
+        python -m unittest discover -s tests/unit/connectors -p "test_*_config.py" $VERBOSE_FLAG
         ;;
     
     health)
         print_info "Running health check tests..."
-        pytest tests/unit/connectors/test_postgres_health.py $VERBOSE_FLAG
+        python -m unittest discover -s tests/unit/connectors -p "test_*_health.py" $VERBOSE_FLAG
         ;;
     
     coverage)
         print_info "Running tests with coverage report..."
-        pytest tests/ \
-            --cov=scr/all_db_connectors \
-            --cov-report=html \
-            --cov-report=term-missing \
-            --cov-report=xml \
-            $VERBOSE_FLAG
+        if ! command -v coverage &> /dev/null; then
+            print_warning "coverage.py not found. Installing..."
+            pip install coverage
+        fi
+        coverage run -m unittest discover -s tests -p "test_*.py"
+        coverage report
+        coverage html
         print_status "Coverage report generated:"
         print_info "  HTML: htmlcov/index.html"
-        print_info "  XML:  coverage.xml"
-        ;;
-    
-    fast)
-        print_info "Running fast tests only (excluding slow tests)..."
-        pytest tests/ -m "not slow" $VERBOSE_FLAG
-        ;;
-    
-    watch)
-        print_info "Running tests in watch mode..."
-        print_warning "This requires pytest-watch: pip install pytest-watch"
-        ptw tests/ -- -m unit $VERBOSE_FLAG
+        print_info "  Terminal: See above"
         ;;
     
     all)
         print_info "Running all tests..."
-        pytest tests/ $VERBOSE_FLAG
-        ;;
-    
-    list)
-        print_info "Available test markers:"
-        pytest --markers
+        python -m unittest discover -s tests -p "test_*.py" $VERBOSE_FLAG
         ;;
     
     help|--help|-h)
@@ -135,18 +152,19 @@ case $TEST_TYPE in
         echo "  unit          - Run unit tests only (fast)"
         echo "  integration   - Run integration tests (requires Docker)"
         echo "  postgres      - Run PostgreSQL-specific tests"
+        echo "  redis         - Run Redis-specific tests"
+        echo "  mongodb       - Run MongoDB-specific tests"
+        echo "  clickhouse    - Run ClickHouse-specific tests"
+        echo "  rabbitmq      - Run RabbitMQ-specific tests"
+        echo "  neo4j         - Run Neo4j-specific tests"
         echo "  config        - Run configuration tests"
         echo "  health        - Run health check tests"
         echo "  coverage      - Run tests with coverage report"
-        echo "  fast          - Run fast tests only (exclude slow)"
-        echo "  watch         - Run tests in watch mode"
         echo "  all           - Run all tests (default)"
-        echo "  list          - List all available test markers"
         echo "  help          - Show this help message"
         echo ""
         echo "Verbose options:"
         echo "  -v            - Verbose output"
-        echo "  -vv           - Very verbose output"
         echo ""
         echo "Examples:"
         echo "  $0 unit              # Run unit tests"

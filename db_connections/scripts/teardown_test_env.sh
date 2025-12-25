@@ -18,7 +18,7 @@ echo ""
 
 # Stop containers
 echo -e "${GREEN}[1/3]${NC} Stopping Docker containers..."
-docker-compose -f tests/integration/docker-compose.yml down
+docker-compose -f tests/unit/integration/docker-compose.yml down || true
 
 # Ask about removing volumes
 echo ""
@@ -29,7 +29,7 @@ echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo -e "${GREEN}[2/3]${NC} Removing volumes..."
-    docker-compose -f tests/integration/docker-compose.yml down -v
+    docker-compose -f tests/unit/integration/docker-compose.yml down -v || true
     echo -e "${GREEN}✓${NC} Volumes removed"
 else
     echo -e "${YELLOW}[2/3]${NC} Keeping volumes (skipped)"
@@ -37,12 +37,12 @@ fi
 
 # Clean test artifacts
 echo -e "${GREEN}[3/3]${NC} Cleaning test artifacts..."
-rm -rf .pytest_cache
-rm -rf htmlcov
-rm -rf .coverage
-rm -rf coverage.xml
+rm -rf htmlcov || true
+rm -rf .coverage || true
+rm -rf coverage.xml || true
 find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 find . -type f -name "*.pyc" -delete 2>/dev/null || true
+find . -type f -name "*.pyo" -delete 2>/dev/null || true
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"

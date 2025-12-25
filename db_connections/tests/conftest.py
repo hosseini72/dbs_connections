@@ -1,52 +1,25 @@
-"""Pytest configuration and shared fixtures for all tests."""
+"""
+Unittest configuration and shared test utilities.
+
+This module provides base test classes, mock objects, and utilities for all tests.
+"""
 
 import os
-import pytest
-import asyncio
-from typing import Generator, AsyncGenerator
+import sys
+import unittest
+from pathlib import Path
 
-
-# =============================================================================
-# Pytest Configuration
-# =============================================================================
-
-def pytest_configure(config):
-    """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers", "unit: mark test as a unit test"
-    )
-    config.addinivalue_line(
-        "markers", "integration: mark test as an integration test"
-    )
-    config.addinivalue_line(
-        "markers", "postgres: mark test as postgres-specific"
-    )
-    config.addinivalue_line(
-        "markers", "redis: mark test as redis-specific"
-    )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
-    )
-
-
-# =============================================================================
-# Event Loop Configuration for Async Tests
-# =============================================================================
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for the entire test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+# Add the project root to the Python path
+PROJECT_ROOT = Path(__file__).parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 # =============================================================================
 # Environment Setup
 # =============================================================================
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_env():
+def setup_test_environment():
     """Setup test environment variables."""
     # PostgreSQL test environment
     os.environ.setdefault("TEST_POSTGRES_HOST", "localhost")
@@ -55,9 +28,63 @@ def setup_test_env():
     os.environ.setdefault("TEST_POSTGRES_USER", "test_user")
     os.environ.setdefault("TEST_POSTGRES_PASSWORD", "test_password")
     
-    yield
+    # Redis test environment
+    os.environ.setdefault("TEST_REDIS_HOST", "localhost")
+    os.environ.setdefault("TEST_REDIS_PORT", "6379")
+    os.environ.setdefault("TEST_REDIS_DB", "0")
     
-    # Cleanup is automatic when test session ends
+    # MongoDB test environment
+    os.environ.setdefault("TEST_MONGODB_HOST", "localhost")
+    os.environ.setdefault("TEST_MONGODB_PORT", "27017")
+    os.environ.setdefault("TEST_MONGODB_DATABASE", "test_db")
+
+
+# Setup environment on import
+setup_test_environment()
+
+
+# =============================================================================
+# Base Test Classes
+# =============================================================================
+
+class BaseTestCase(unittest.TestCase):
+    """Base test case with common setup and teardown."""
+    
+    @classmethod
+    def setUpClass(cls):
+        """Set up test class."""
+        super().setUpClass()
+        setup_test_environment()
+    
+    def setUp(self):
+        """Set up each test method."""
+        super().setUp()
+        # Additional setup if needed
+    
+    def tearDown(self):
+        """Clean up after each test method."""
+        super().tearDown()
+        # Additional cleanup if needed
+
+
+class AsyncTestCase(unittest.IsolatedAsyncioTestCase):
+    """Base test case for async tests (Python 3.8+)."""
+    
+    @classmethod
+    def setUpClass(cls):
+        """Set up test class."""
+        super().setUpClass()
+        setup_test_environment()
+    
+    async def asyncSetUp(self):
+        """Set up each async test method."""
+        await super().asyncSetUp()
+        # Additional async setup if needed
+    
+    async def asyncTearDown(self):
+        """Clean up after each async test method."""
+        await super().asyncTearDown()
+        # Additional async cleanup if needed
 
 
 # =============================================================================
@@ -254,28 +281,24 @@ class MockAsyncpgPool:
 
 
 # =============================================================================
-# Fixture Exports
+# Helper Functions
 # =============================================================================
 
-@pytest.fixture
-def mock_psycopg2_connection():
-    """Provide mock psycopg2 connection."""
+def get_mock_psycopg2_connection():
+    """Get a mock psycopg2 connection."""
     return MockPsycopg2Connection()
 
 
-@pytest.fixture
-def mock_psycopg2_pool():
-    """Provide mock psycopg2 pool."""
+def get_mock_psycopg2_pool():
+    """Get a mock psycopg2 pool."""
     return MockPsycopg2Pool(minconn=2, maxconn=10)
 
 
-@pytest.fixture
-def mock_asyncpg_connection():
-    """Provide mock asyncpg connection."""
+def get_mock_asyncpg_connection():
+    """Get a mock asyncpg connection."""
     return MockAsyncpgConnection()
 
 
-@pytest.fixture
-def mock_asyncpg_pool():
-    """Provide mock asyncpg pool."""
+def get_mock_asyncpg_pool():
+    """Get a mock asyncpg pool."""
     return MockAsyncpgPool(min_size=2, max_size=10)

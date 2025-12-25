@@ -44,6 +44,9 @@ pip install db_connections[neo4j]          # Neo4j (sync + async)
 pip install db_connections[neo4j-sync]     # Neo4j (sync only)
 pip install db_connections[neo4j-async]    # Neo4j (async only)
 
+# Install multiple databases (combine extras with commas)
+pip install db_connections[postgres,redis,mongodb]  # PostgreSQL, Redis, and MongoDB
+
 # With all databases
 pip install db_connections[all]
 
@@ -363,7 +366,7 @@ install-dev:
 	pip install -e ".[dev,all]"
 
 test:
-	pytest
+	python -m unittest discover -s tests -p "test_*.py"
 
 lint:
 	ruff check scr/ tests/

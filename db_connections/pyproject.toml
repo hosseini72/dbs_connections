@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 
 [tool.hatch.build.targets.wheel]
-# Hatchling will auto-discover packages starting from db_connections
+packages = ["db_connections", "db_connections.scr"]
 
 [tool.hatch.build.targets.sdist]
-# Hatchling will auto-discover packages starting from db_connections
+packages = ["db_connections", "db_connections.scr"]
 
 [project]
 name = "db_connections"
