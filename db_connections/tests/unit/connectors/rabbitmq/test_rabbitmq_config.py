@@ -12,7 +12,14 @@ try:
     _file_path = Path(__file__).resolve()
 except NameError:
     # __file__ might not be defined in some contexts
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'rabbitmq' / 'test_rabbitmq_config.py'  # noqa: E501
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "rabbitmq"
+        / "test_rabbitmq_config.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -20,7 +27,7 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.config import (  # noqa: E402, E501
-    RabbitMQPoolConfig
+    RabbitMQPoolConfig,
 )
 
 
@@ -29,9 +36,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
 
     def test_default_values(self):
         """Test default configuration values."""
-        config = RabbitMQPoolConfig(
-            host="localhost"
-        )
+        config = RabbitMQPoolConfig(host="localhost")
 
         self.assertEqual(config.host, "localhost")
         self.assertEqual(config.port, 5672)
@@ -60,7 +65,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
             max_connections=20,
             min_connections=5,
             max_idle_time=120,
-            max_lifetime=7200
+            max_lifetime=7200,
         )
 
         self.assertEqual(config.host, "rabbitmq.example.com")
@@ -101,28 +106,18 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
 
     def test_invalid_max_connections(self):
         """Test validation of max_connections."""
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             RabbitMQPoolConfig(host="localhost", max_connections=0)
 
     def test_invalid_min_connections(self):
         """Test validation of min_connections."""
-        with self.assertRaisesRegex(
-            ValueError, "min_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "min_connections must be positive"):
             RabbitMQPoolConfig(host="localhost", min_connections=0)
 
     def test_min_greater_than_max(self):
         """Test validation that min_connections <= max_connections."""
-        with self.assertRaisesRegex(
-            ValueError, "min_connections cannot be greater"
-        ):
-            RabbitMQPoolConfig(
-                host="localhost",
-                min_connections=20,
-                max_connections=10
-            )
+        with self.assertRaisesRegex(ValueError, "min_connections cannot be greater"):
+            RabbitMQPoolConfig(host="localhost", min_connections=20, max_connections=10)
 
     def test_invalid_heartbeat(self):
         """Test validation of heartbeat."""
@@ -131,13 +126,8 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
 
     def test_invalid_connection_attempts(self):
         """Test validation of connection_attempts."""
-        with self.assertRaisesRegex(
-            ValueError, "connection_attempts must be positive"
-        ):
-            RabbitMQPoolConfig(
-                host="localhost",
-                connection_attempts=0
-            )
+        with self.assertRaisesRegex(ValueError, "connection_attempts must be positive"):
+            RabbitMQPoolConfig(host="localhost", connection_attempts=0)
 
     def test_get_connection_params(self):
         """Test connection parameters generation."""
@@ -149,7 +139,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
             virtual_host="vhost",
             heartbeat=30,
             connection_timeout=10,
-            socket_timeout=5
+            socket_timeout=5,
         )
 
         params = config.get_connection_params()
@@ -165,10 +155,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
 
     def test_get_connection_params_no_auth(self):
         """Test connection parameters without authentication."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            port=5672
-        )
+        config = RabbitMQPoolConfig(host="localhost", port=5672)
 
         params = config.get_connection_params()
 
@@ -183,18 +170,15 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
             ssl_options={
                 "ca_certs": "/path/to/ca.crt",
                 "certfile": "/path/to/client.crt",
-                "keyfile": "/path/to/client.key"
-            }
+                "keyfile": "/path/to/client.key",
+            },
         )
 
         params = config.get_connection_params()
 
         self.assertTrue(params["ssl"])
         self.assertIn("ssl_options", params)
-        self.assertEqual(
-            params["ssl_options"]["ca_certs"],
-            "/path/to/ca.crt"
-        )
+        self.assertEqual(params["ssl_options"]["ca_certs"], "/path/to/ca.crt")
 
     def test_get_connection_url(self):
         """Test connection URL generation."""
@@ -203,7 +187,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
             port=5672,
             username="user",
             password="pass",
-            virtual_host="vhost"
+            virtual_host="vhost",
         )
 
         url = config.get_connection_url()
@@ -215,10 +199,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
 
     def test_get_connection_url_no_auth(self):
         """Test connection URL without authentication."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            port=5672
-        )
+        config = RabbitMQPoolConfig(host="localhost", port=5672)
 
         url = config.get_connection_url()
 
@@ -226,11 +207,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
 
     def test_get_connection_url_with_ssl(self):
         """Test connection URL with SSL (amqps://)."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            port=5671,
-            ssl=True
-        )
+        config = RabbitMQPoolConfig(host="localhost", port=5671, ssl=True)
 
         url = config.get_connection_url()
 
@@ -248,11 +225,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
         """Test creating config from URL with extra parameters."""
         url = "amqp://localhost:5672/"
 
-        config = RabbitMQPoolConfig.from_url(
-            url,
-            max_connections=20,
-            min_connections=5
-        )
+        config = RabbitMQPoolConfig.from_url(url, max_connections=20, min_connections=5)
 
         self.assertEqual(config.connection_url, url)
         self.assertEqual(config.max_connections, 20)
@@ -316,23 +289,17 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
         config = RabbitMQPoolConfig(
             connection_url="amqp://user:pass@remote:5673/remotevhost",
             host="localhost",  # Should be ignored
-            port=5672  # Should be ignored
+            port=5672,  # Should be ignored
         )
 
         params = config.get_connection_params()
 
         self.assertIn("url", params)
-        self.assertEqual(
-            params["url"],
-            "amqp://user:pass@remote:5673/remotevhost"
-        )
+        self.assertEqual(params["url"], "amqp://user:pass@remote:5673/remotevhost")
 
     def test_blocked_connection_timeout(self):
         """Test blocked connection timeout."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            blocked_connection_timeout=300
-        )
+        config = RabbitMQPoolConfig(host="localhost", blocked_connection_timeout=300)
 
         params = config.get_connection_params()
 
@@ -340,10 +307,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
 
     def test_channel_max(self):
         """Test channel max configuration."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            channel_max=100
-        )
+        config = RabbitMQPoolConfig(host="localhost", channel_max=100)
 
         params = config.get_connection_params()
 
@@ -351,10 +315,7 @@ class TestRabbitMQPoolConfig(unittest.TestCase):
 
     def test_frame_max(self):
         """Test frame max configuration."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            frame_max=131072
-        )
+        config = RabbitMQPoolConfig(host="localhost", frame_max=131072)
 
         params = config.get_connection_params()
 
@@ -366,20 +327,14 @@ class TestRabbitMQPoolConfigEdgeCases(unittest.TestCase):
 
     def test_special_characters_in_password(self):
         """Test password with special characters."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            password="p@ssw0rd!#$%"
-        )
+        config = RabbitMQPoolConfig(host="localhost", password="p@ssw0rd!#$%")
 
         params = config.get_connection_params()
         self.assertEqual(params["password"], "p@ssw0rd!#$%")
 
     def test_ipv6_host(self):
         """Test IPv6 host address."""
-        config = RabbitMQPoolConfig(
-            host="::1",
-            port=5672
-        )
+        config = RabbitMQPoolConfig(host="::1", port=5672)
 
         self.assertEqual(config.host, "::1")
 
@@ -392,16 +347,12 @@ class TestRabbitMQPoolConfigEdgeCases(unittest.TestCase):
 
     def test_max_idle_time_validation(self):
         """Test max_idle_time validation."""
-        with self.assertRaisesRegex(
-            ValueError, "max_idle_time must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_idle_time must be positive"):
             RabbitMQPoolConfig(host="localhost", max_idle_time=-1)
 
     def test_max_lifetime_validation(self):
         """Test max_lifetime validation."""
-        with self.assertRaisesRegex(
-            ValueError, "max_lifetime must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_lifetime must be positive"):
             RabbitMQPoolConfig(host="localhost", max_lifetime=-1)
 
     def test_ssl_options_dict(self):
@@ -413,8 +364,8 @@ class TestRabbitMQPoolConfigEdgeCases(unittest.TestCase):
                 "ca_certs": "/path/to/ca.crt",
                 "cert_reqs": "CERT_REQUIRED",
                 "certfile": "/path/to/cert.pem",
-                "keyfile": "/path/to/key.pem"
-            }
+                "keyfile": "/path/to/key.pem",
+            },
         )
 
         params = config.get_connection_params()
@@ -423,10 +374,7 @@ class TestRabbitMQPoolConfigEdgeCases(unittest.TestCase):
 
     def test_virtual_host_encoding(self):
         """Test virtual host URL encoding."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            virtual_host="my/vhost"
-        )
+        config = RabbitMQPoolConfig(host="localhost", virtual_host="my/vhost")
 
         url = config.get_connection_url()
         # Virtual host should be URL encoded
@@ -434,10 +382,7 @@ class TestRabbitMQPoolConfigEdgeCases(unittest.TestCase):
 
     def test_locale_configuration(self):
         """Test locale configuration."""
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            locale="en_US"
-        )
+        config = RabbitMQPoolConfig(host="localhost", locale="en_US")
 
         params = config.get_connection_params()
         self.assertEqual(params["locale"], "en_US")
@@ -445,21 +390,13 @@ class TestRabbitMQPoolConfigEdgeCases(unittest.TestCase):
     def test_client_properties(self):
         """Test client properties configuration."""
         config = RabbitMQPoolConfig(
-            host="localhost",
-            client_properties={
-                "product": "MyApp",
-                "version": "1.0.0"
-            }
+            host="localhost", client_properties={"product": "MyApp", "version": "1.0.0"}
         )
 
         params = config.get_connection_params()
         self.assertIn("client_properties", params)
-        self.assertEqual(
-            params["client_properties"]["product"],
-            "MyApp"
-        )
+        self.assertEqual(params["client_properties"]["product"], "MyApp")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

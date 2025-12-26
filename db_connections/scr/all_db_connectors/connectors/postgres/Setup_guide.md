@@ -20,24 +20,6 @@ pip install db_connections[postgres-async]
 pip install db_connections[postgres]
 ```
 
-## Dependencies
-
-Add these to your `pyproject.toml`:
-
-```toml
-[project.optional-dependencies]
-postgres-sync = [
-    "psycopg2-binary>=2.9.9",
-]
-postgres-async = [
-    "asyncpg>=0.29.0",
-]
-postgres = [
-    "psycopg2-binary>=2.9.9",
-    "asyncpg>=0.29.0",
-]
-```
-
 ## Quick Start
 
 ### Synchronous Usage

@@ -15,7 +15,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'redis' / 'test_redis_health.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "redis"
+        / "test_redis_health.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -23,13 +31,14 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.redis.config import (  # noqa: E402, E501
-    RedisPoolConfig
+    RedisPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.redis.health import (  # noqa: E402
     RedisHealthChecker,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState, HealthStatus
+    HealthState,
+    HealthStatus,
 )
 
 
@@ -148,9 +157,7 @@ class TestRedisHealthCheckerConnection(unittest.TestCase):
 
     def test_check_health_healthy(self):
         """Test health check on healthy connection."""
-        result = self.health_checker.check_health(
-            self.mock_redis_connection
-        )
+        result = self.health_checker.check_health(self.mock_redis_connection)
 
         self.assertIsInstance(result, HealthStatus)
         self.assertEqual(result.state, HealthState.HEALTHY)
@@ -179,10 +186,7 @@ class TestRedisHealthCheckerConnection(unittest.TestCase):
         result = self.health_checker.check_health(conn)
 
         # Should be unhealthy due to high memory
-        self.assertIn(
-            result.state,
-            [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(result.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
         self.assertIn("memory", result.message.lower())
 
     def test_check_health_with_slow_response(self):
@@ -191,14 +195,11 @@ class TestRedisHealthCheckerConnection(unittest.TestCase):
 
         # Simulate slow response by patching perf_counter
         # First call returns 0, second call returns 1.5 (1.5 second delay = 1500ms)
-        with patch('time.perf_counter', side_effect=[0, 1.5]):
+        with patch("time.perf_counter", side_effect=[0, 1.5]):
             result = self.health_checker.check_health(conn)
 
         # Should be degraded or unhealthy due to slow response (1500ms > 1000ms threshold)
-        self.assertIn(
-            result.state,
-            [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(result.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
     def test_check_health_with_rejected_connections(self):
         """Test health check with rejected connections."""
@@ -420,10 +421,12 @@ class TestRedisHealthCheckerSlowLog(unittest.TestCase):
     def test_get_slow_log(self):
         """Test getting slow log."""
         conn = MockRedisConnection()
-        conn.slowlog_get = Mock(return_value=[
-            {"id": 1, "duration": 1000, "command": "GET key"},
-            {"id": 2, "duration": 2000, "command": "SET key value"},
-        ])
+        conn.slowlog_get = Mock(
+            return_value=[
+                {"id": 1, "duration": 1000, "command": "GET key"},
+                {"id": 2, "duration": 2000, "command": "SET key value"},
+            ]
+        )
 
         result = self.health_checker.get_slow_log(conn, count=10)
 
@@ -529,9 +532,7 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
 
     def test_response_time_recorded(self):
         """Test that response time is recorded."""
-        result = self.health_checker.check_health(
-            self.mock_redis_connection
-        )
+        result = self.health_checker.check_health(self.mock_redis_connection)
 
         self.assertIsNotNone(result.response_time_ms)
         self.assertGreater(result.response_time_ms, 0)
@@ -546,6 +547,5 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
         self.assertGreaterEqual(result.response_time_ms, 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

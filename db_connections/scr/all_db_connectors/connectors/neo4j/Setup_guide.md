@@ -20,23 +20,6 @@ pip install db_connections[neo4j-async]
 pip install db_connections[neo4j]
 ```
 
-## Dependencies
-
-Add these to your `pyproject.toml`:
-
-```toml
-[project.optional-dependencies]
-neo4j-sync = [
-    "neo4j>=5.0.0",
-]
-neo4j-async = [
-    "neo4j>=5.0.0",
-]
-neo4j = [
-    "neo4j>=5.0.0",
-]
-```
-
 ## Quick Start
 
 ### Synchronous Usage

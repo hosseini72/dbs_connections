@@ -11,6 +11,7 @@ from .health import ClickHouseHealthChecker
 # Import sync pool
 try:
     from .pool import ClickHouseSyncConnectionPool
+
     SYNC_AVAILABLE = True
 except ImportError:
     SYNC_AVAILABLE = False
@@ -19,6 +20,7 @@ except ImportError:
 # Import async pool
 try:
     from .pool import ClickHouseAsyncConnectionPool
+
     ASYNC_AVAILABLE = True
 except ImportError:
     ASYNC_AVAILABLE = False

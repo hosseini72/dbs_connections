@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'postgres' / 'test_postgres_pool.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "postgres"
+        / "test_postgres_pool.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,17 +30,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.postgres.config import (  # noqa: E402, E501
-    PostgresPoolConfig
+    PostgresPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.postgres.pool import (  # noqa: E402, E501
-    PostgresConnectionPool
+    PostgresConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolExhaustedError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -153,9 +161,7 @@ class TestPostgresConnectionPoolInit(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -177,12 +183,10 @@ class TestPostgresConnectionPoolInit(unittest.TestCase):
             host="localhost",
             database="test_db",
             user="test_user",
-            max_size=-1  # Invalid
+            max_size=-1,  # Invalid
         )
 
-        with self.assertRaisesRegex(
-            ValueError, "max_size must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_size must be positive"):
             PostgresConnectionPool(invalid_config)
 
     def test_repr(self):
@@ -218,9 +222,7 @@ class TestPostgresConnectionPoolInitialization(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -244,9 +246,7 @@ class TestPostgresConnectionPoolInitialization(unittest.TestCase):
         pool.initialize_pool()  # Second call should be no-op
 
         # Should only be called once
-        self.assertEqual(
-            self.mock_module.ThreadedConnectionPool.call_count, 1
-        )
+        self.assertEqual(self.mock_module.ThreadedConnectionPool.call_count, 1)
 
     def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
@@ -259,9 +259,7 @@ class TestPostgresConnectionPoolInitialization(unittest.TestCase):
 
             pool = PostgresConnectionPool(self.postgres_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 pool.initialize_pool()
 
     def test_lazy_initialization(self):
@@ -300,9 +298,7 @@ class TestPostgresConnectionPoolGetConnection(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -335,14 +331,12 @@ class TestPostgresConnectionPoolGetConnection(unittest.TestCase):
             database="test_db",
             user="test_user",
             validate_on_checkout=True,
-            pre_ping=True
+            pre_ping=True,
         )
 
         pool = PostgresConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -365,9 +359,7 @@ class TestPostgresConnectionPoolGetConnection(unittest.TestCase):
         with pool.get_connection() as conn:
             conn_id = id(conn)
             self.assertIn(conn_id, pool._connection_metadata)
-            self.assertTrue(
-                pool._connection_metadata[conn_id].in_use
-            )
+            self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -393,9 +385,7 @@ class TestPostgresConnectionPoolGetConnection(unittest.TestCase):
             pool = PostgresConnectionPool(self.postgres_config)
             pool.initialize_pool()
 
-            with self.assertRaisesRegex(
-                PoolExhaustedError, "No connections available"
-            ):
+            with self.assertRaisesRegex(PoolExhaustedError, "No connections available"):
                 with pool.get_connection():
                     pass
 
@@ -423,9 +413,7 @@ class TestPostgresConnectionPoolRelease(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -452,7 +440,7 @@ class TestPostgresConnectionPoolRelease(unittest.TestCase):
             host="localhost",
             database="test_db",
             user="test_user",
-            recycle_on_return=True
+            recycle_on_return=True,
         )
 
         pool = PostgresConnectionPool(config)
@@ -463,6 +451,7 @@ class TestPostgresConnectionPoolRelease(unittest.TestCase):
 
         # Create metadata
         from db_connections.scr.all_db_connectors.core.utils import ConnectionMetadata
+
         pool._connection_metadata[conn_id] = ConnectionMetadata(
             created_at=datetime.now() - timedelta(hours=1)
         )
@@ -496,9 +485,7 @@ class TestPostgresConnectionPoolClose(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -554,9 +541,7 @@ class TestPostgresConnectionPoolStatus(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -571,10 +556,7 @@ class TestPostgresConnectionPoolStatus(unittest.TestCase):
 
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
-        expected_max = (
-            self.postgres_config.max_size +
-            self.postgres_config.max_overflow
-        )
+        expected_max = self.postgres_config.max_size + self.postgres_config.max_overflow
         self.assertEqual(status["max_connections"], expected_max)
 
     def test_pool_status_initialized(self):
@@ -587,14 +569,9 @@ class TestPostgresConnectionPoolStatus(unittest.TestCase):
 
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
-        expected_max = (
-            self.postgres_config.max_size +
-            self.postgres_config.max_overflow
-        )
+        expected_max = self.postgres_config.max_size + self.postgres_config.max_overflow
         self.assertEqual(status["max_connections"], expected_max)
-        self.assertEqual(
-            status["min_connections"], self.postgres_config.min_size
-        )
+        self.assertEqual(status["min_connections"], self.postgres_config.min_size)
 
     def test_get_metrics(self):
         """Test getting pool metrics."""
@@ -607,14 +584,9 @@ class TestPostgresConnectionPoolStatus(unittest.TestCase):
         self.assertGreaterEqual(metrics.total_connections, 0)
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
-        expected_max = (
-            self.postgres_config.max_size +
-            self.postgres_config.max_overflow
-        )
+        expected_max = self.postgres_config.max_size + self.postgres_config.max_overflow
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.postgres_config.min_size
-        )
+        self.assertEqual(metrics.min_connections, self.postgres_config.min_size)
 
 
 class TestPostgresConnectionPoolValidation(unittest.TestCase):
@@ -640,9 +612,7 @@ class TestPostgresConnectionPoolValidation(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -694,9 +664,7 @@ class TestPostgresConnectionPoolHealth(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -724,11 +692,7 @@ class TestPostgresConnectionPoolHealth(unittest.TestCase):
 
             self.assertIn(
                 health.state,
-                [
-                    HealthState.HEALTHY,
-                    HealthState.DEGRADED,
-                    HealthState.UNHEALTHY
-                ]
+                [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
             )
 
 
@@ -754,9 +718,7 @@ class TestPostgresConnectionPoolContextManager(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -815,6 +777,7 @@ class TestPostgresConnectionPoolRetry(unittest.TestCase):
             # Fail twice, succeed on third attempt
             # Need extra items in case validation triggers additional getconn() calls
             import psycopg2
+
             mock_pool.getconn.side_effect = [
                 psycopg2.OperationalError("Connection failed"),
                 psycopg2.OperationalError("Connection failed"),
@@ -831,7 +794,7 @@ class TestPostgresConnectionPoolRetry(unittest.TestCase):
                 max_retries=3,
                 retry_delay=0.1,
                 pre_ping=False,  # Disable validation to avoid extra getconn() calls
-                validate_on_checkout=False
+                validate_on_checkout=False,
             )
 
             pool = PostgresConnectionPool(config)
@@ -849,6 +812,7 @@ class TestPostgresConnectionPoolRetry(unittest.TestCase):
             mock_pool = MagicMock()
 
             import psycopg2
+
             mock_pool.getconn.side_effect = psycopg2.OperationalError(
                 "Connection failed"
             )
@@ -860,7 +824,7 @@ class TestPostgresConnectionPoolRetry(unittest.TestCase):
                 database="test_db",
                 user="test_user",
                 max_retries=2,
-                retry_delay=0.1
+                retry_delay=0.1,
             )
 
             pool = PostgresConnectionPool(config)
@@ -896,9 +860,7 @@ class TestPostgresConnectionPoolConcurrency(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.postgres.pool.psycopg2_pool"
         ).start()
-        self.mock_module.ThreadedConnectionPool.return_value = (
-            self.mock_psycopg2_pool
-        )
+        self.mock_module.ThreadedConnectionPool.return_value = self.mock_psycopg2_pool
 
     def tearDown(self):
         """Clean up patches."""
@@ -948,5 +910,5 @@ class TestPostgresConnectionPoolConcurrency(unittest.TestCase):
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

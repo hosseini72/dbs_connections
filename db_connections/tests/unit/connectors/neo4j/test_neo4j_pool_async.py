@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'neo4j' / 'test_neo4j_pool_async.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "neo4j"
+        / "test_neo4j_pool_async.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,17 +30,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.neo4j.config import (  # noqa: E402
-    Neo4jPoolConfig
+    Neo4jPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.neo4j.pool import (  # noqa: E402, E501
-    Neo4jAsyncConnectionPool
+    Neo4jAsyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolTimeoutError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -150,19 +158,15 @@ class TestAsyncNeo4jConnectionPoolInit(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return MockAsyncNeo4jDriver()
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -184,12 +188,10 @@ class TestAsyncNeo4jConnectionPoolInit(unittest.TestCase):
         """Test pool validates configuration on init."""
         invalid_config = Neo4jPoolConfig(
             host="localhost",
-            max_connections=-1  # Invalid
+            max_connections=-1,  # Invalid
         )
 
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             Neo4jAsyncConnectionPool(invalid_config)
 
     def test_repr(self):
@@ -203,9 +205,7 @@ class TestAsyncNeo4jConnectionPoolInit(unittest.TestCase):
         self.assertIn("7687", repr_str)
 
 
-class TestAsyncNeo4jConnectionPoolInitialization(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolInitialization(unittest.IsolatedAsyncioTestCase):
     """Test async pool initialization."""
 
     def setUp(self):
@@ -217,19 +217,15 @@ class TestAsyncNeo4jConnectionPoolInitialization(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return MockAsyncNeo4jDriver()
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -257,21 +253,17 @@ class TestAsyncNeo4jConnectionPoolInitialization(
 
     async def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
+
         async def failing_create_driver(**kwargs):
             raise Exception("Connection failed")
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         with patch(patch_path) as mock_module:
             mock_module.GraphDatabase.async_driver = failing_create_driver
 
             pool = Neo4jAsyncConnectionPool(self.neo4j_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 await pool.initialize_pool()
 
     async def test_lazy_initialization(self):
@@ -287,9 +279,7 @@ class TestAsyncNeo4jConnectionPoolInitialization(
         self.assertTrue(pool._initialized)
 
 
-class TestAsyncNeo4jConnectionPoolGetConnection(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolGetConnection(unittest.IsolatedAsyncioTestCase):
     """Test async connection acquisition."""
 
     def setUp(self):
@@ -301,20 +291,16 @@ class TestAsyncNeo4jConnectionPoolGetConnection(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
         self.mock_async_neo4j_driver = MockAsyncNeo4jDriver()
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return self.mock_async_neo4j_driver
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -345,16 +331,12 @@ class TestAsyncNeo4jConnectionPoolGetConnection(
         """Test connection validation on checkout."""
         self._setup_mock_async_neo4j_module()
         config = Neo4jPoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = Neo4jAsyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -378,9 +360,7 @@ class TestAsyncNeo4jConnectionPoolGetConnection(
             conn_id = id(conn)
             async with pool._metadata_lock:
                 self.assertIn(conn_id, pool._connection_metadata)
-                self.assertTrue(
-                    pool._connection_metadata[conn_id].in_use
-                )
+                self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     async def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -396,6 +376,7 @@ class TestAsyncNeo4jConnectionPoolGetConnection(
 
     async def test_get_connection_timeout(self):
         """Test connection acquisition timeout."""
+
         async def timeout_acquire(timeout=None):
             raise asyncio.TimeoutError("Timeout")
 
@@ -405,10 +386,7 @@ class TestAsyncNeo4jConnectionPoolGetConnection(
         async def create_driver_mock(**kwargs):
             return mock_pool
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         with patch(patch_path) as mock_module:
             mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -422,9 +400,7 @@ class TestAsyncNeo4jConnectionPoolGetConnection(
                     pass
 
 
-class TestAsyncNeo4jConnectionPoolRelease(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolRelease(unittest.IsolatedAsyncioTestCase):
     """Test async connection release."""
 
     def setUp(self):
@@ -436,20 +412,16 @@ class TestAsyncNeo4jConnectionPoolRelease(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
         self.mock_async_neo4j_driver = MockAsyncNeo4jDriver()
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return self.mock_async_neo4j_driver
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -472,9 +444,7 @@ class TestAsyncNeo4jConnectionPoolRelease(
         self.assertNotIn(conn_id, pool._connections_in_use)
 
 
-class TestAsyncNeo4jConnectionPoolClose(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolClose(unittest.IsolatedAsyncioTestCase):
     """Test async pool closing."""
 
     def setUp(self):
@@ -486,20 +456,16 @@ class TestAsyncNeo4jConnectionPoolClose(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
         self.mock_async_neo4j_driver = MockAsyncNeo4jDriver()
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return self.mock_async_neo4j_driver
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -534,9 +500,7 @@ class TestAsyncNeo4jConnectionPoolClose(
         self.assertEqual(len(pool._connections_in_use), 0)
 
 
-class TestAsyncNeo4jConnectionPoolStatus(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolStatus(unittest.IsolatedAsyncioTestCase):
     """Test async pool status and metrics."""
 
     def setUp(self):
@@ -548,19 +512,15 @@ class TestAsyncNeo4jConnectionPoolStatus(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return MockAsyncNeo4jDriver()
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -578,8 +538,7 @@ class TestAsyncNeo4jConnectionPoolStatus(
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.neo4j_config.max_connections +
-            self.neo4j_config.max_overflow
+            self.neo4j_config.max_connections + self.neo4j_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -594,13 +553,10 @@ class TestAsyncNeo4jConnectionPoolStatus(
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.neo4j_config.max_connections +
-            self.neo4j_config.max_overflow
+            self.neo4j_config.max_connections + self.neo4j_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
-        self.assertEqual(
-            status["min_connections"], self.neo4j_config.min_connections
-        )
+        self.assertEqual(status["min_connections"], self.neo4j_config.min_connections)
 
     async def test_get_metrics(self):
         """Test getting pool metrics."""
@@ -614,18 +570,13 @@ class TestAsyncNeo4jConnectionPoolStatus(
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.neo4j_config.max_connections +
-            self.neo4j_config.max_overflow
+            self.neo4j_config.max_connections + self.neo4j_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.neo4j_config.min_connections
-        )
+        self.assertEqual(metrics.min_connections, self.neo4j_config.min_connections)
 
 
-class TestAsyncNeo4jConnectionPoolValidation(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolValidation(unittest.IsolatedAsyncioTestCase):
     """Test async connection validation."""
 
     def setUp(self):
@@ -637,20 +588,16 @@ class TestAsyncNeo4jConnectionPoolValidation(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
         self.mock_async_neo4j_driver = MockAsyncNeo4jDriver()
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return self.mock_async_neo4j_driver
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -663,16 +610,12 @@ class TestAsyncNeo4jConnectionPoolValidation(
         self._setup_mock_async_neo4j_module()
         pool = Neo4jAsyncConnectionPool(self.neo4j_config)
 
-        result = await pool.validate_connection(
-            self.mock_async_neo4j_driver
-        )
+        result = await pool.validate_connection(self.mock_async_neo4j_driver)
 
         self.assertTrue(result)
 
 
-class TestAsyncNeo4jConnectionPoolHealth(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolHealth(unittest.IsolatedAsyncioTestCase):
     """Test async health checks."""
 
     def setUp(self):
@@ -684,20 +627,16 @@ class TestAsyncNeo4jConnectionPoolHealth(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
         self.mock_async_neo4j_driver = MockAsyncNeo4jDriver()
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return self.mock_async_neo4j_driver
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -727,9 +666,7 @@ class TestAsyncNeo4jConnectionPoolHealth(
 
         health = await pool.health_check()
 
-        self.assertIn(
-            health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
     async def test_database_health_check(self):
         """Test database health check."""
@@ -741,18 +678,12 @@ class TestAsyncNeo4jConnectionPoolHealth(
 
         self.assertIn(
             health.state,
-            [
-                HealthState.HEALTHY,
-                HealthState.DEGRADED,
-                HealthState.UNHEALTHY
-            ]
+            [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
         )
         self.assertIsNotNone(health.response_time_ms)
 
 
-class TestAsyncNeo4jConnectionPoolContextManager(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolContextManager(unittest.IsolatedAsyncioTestCase):
     """Test async context manager support."""
 
     def setUp(self):
@@ -764,19 +695,15 @@ class TestAsyncNeo4jConnectionPoolContextManager(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return MockAsyncNeo4jDriver()
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -787,9 +714,7 @@ class TestAsyncNeo4jConnectionPoolContextManager(
     async def test_context_manager_enter(self):
         """Test pool async context manager enter."""
         self._setup_mock_async_neo4j_module()
-        async with Neo4jAsyncConnectionPool(
-            self.neo4j_config
-        ) as pool:
+        async with Neo4jAsyncConnectionPool(self.neo4j_config) as pool:
             self.assertTrue(pool._initialized)
             self.assertFalse(pool._closed)
 
@@ -806,18 +731,14 @@ class TestAsyncNeo4jConnectionPoolContextManager(
     async def test_context_manager_with_connections(self):
         """Test using connections within async context manager."""
         self._setup_mock_async_neo4j_module()
-        async with Neo4jAsyncConnectionPool(
-            self.neo4j_config
-        ) as pool:
+        async with Neo4jAsyncConnectionPool(self.neo4j_config) as pool:
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
         self.assertTrue(pool._closed)
 
 
-class TestAsyncNeo4jConnectionPoolConcurrency(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncNeo4jConnectionPoolConcurrency(unittest.IsolatedAsyncioTestCase):
     """Test concurrent async operations."""
 
     def setUp(self):
@@ -829,20 +750,16 @@ class TestAsyncNeo4jConnectionPoolConcurrency(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(
-            max_connections=10
-        )
+        self.mock_async_neo4j_pool = MockAsyncNeo4jConnectionPool(max_connections=10)
         self.mock_async_neo4j_driver = MockAsyncNeo4jDriver()
 
     def _setup_mock_async_neo4j_module(self):
         """Set up mock async neo4j module."""
+
         async def create_driver_mock(**kwargs):
             return self.mock_async_neo4j_driver
 
-        patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "neo4j.pool.neo4j"
-        )
+        patch_path = "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         self.mock_module = patch(patch_path).start()
         self.mock_module.GraphDatabase.async_driver = create_driver_mock
 
@@ -887,6 +804,5 @@ class TestAsyncNeo4jConnectionPoolConcurrency(
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

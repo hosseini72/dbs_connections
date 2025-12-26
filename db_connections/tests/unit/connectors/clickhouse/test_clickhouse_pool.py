@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'clickhouse' / 'test_clickhouse_pool.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "clickhouse"
+        / "test_clickhouse_pool.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,17 +30,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.clickhouse.config import (  # noqa: E402, E501
-    ClickHousePoolConfig
+    ClickHousePoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.clickhouse.pool import (  # noqa: E402, E501
-    ClickHouseSyncConnectionPool
+    ClickHouseSyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolExhaustedError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -42,11 +50,7 @@ class MockClickHouseConnection:
     def __init__(self):
         self.closed = False
         self.connected = True
-        self.server_info = {
-            "version_major": 23,
-            "version_minor": 1,
-            "revision": 54463
-        }
+        self.server_info = {"version_major": 23, "version_minor": 1, "revision": 54463}
 
     def ping(self):
         """Mock ping."""
@@ -125,9 +129,7 @@ class TestClickHouseConnectionPoolInit(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
 
     def _setup_mock_clickhouse_module(self):
         """Set up mock clickhouse module."""
@@ -152,12 +154,10 @@ class TestClickHouseConnectionPoolInit(unittest.TestCase):
 
     def test_init_validates_config(self):
         """Test pool validates configuration on init."""
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             invalid_config = ClickHousePoolConfig(
                 host="localhost",
-                max_connections=-1  # Invalid
+                max_connections=-1,  # Invalid
             )
 
     def test_repr(self):
@@ -183,18 +183,14 @@ class TestClickHouseConnectionPoolInitialization(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
 
     def _setup_mock_clickhouse_module(self):
         """Set up mock clickhouse module."""
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ).start()
-        self.mock_module.get_client.return_value = (
-            MockClickHouseConnection()
-        )
+        self.mock_module.get_client.return_value = MockClickHouseConnection()
 
     def tearDown(self):
         """Clean up patches."""
@@ -218,24 +214,18 @@ class TestClickHouseConnectionPoolInitialization(unittest.TestCase):
         pool.initialize_pool()  # Second call should be no-op
 
         # Should only be called once
-        self.assertEqual(
-            self.mock_module.get_client.call_count, 1
-        )
+        self.assertEqual(self.mock_module.get_client.call_count, 1)
 
     def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
         with patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ) as mock_module:
-            mock_module.get_client.side_effect = Exception(
-                "Connection failed"
-            )
+            mock_module.get_client.side_effect = Exception("Connection failed")
 
             pool = ClickHouseSyncConnectionPool(self.clickhouse_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 pool.initialize_pool()
 
     def test_lazy_initialization(self):
@@ -263,9 +253,7 @@ class TestClickHouseConnectionPoolGetConnection(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
         self.mock_clickhouse_connection = MockClickHouseConnection()
 
     def _setup_mock_clickhouse_module(self):
@@ -273,9 +261,7 @@ class TestClickHouseConnectionPoolGetConnection(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ).start()
-        self.mock_module.get_client.return_value = (
-            self.mock_clickhouse_connection
-        )
+        self.mock_module.get_client.return_value = self.mock_clickhouse_connection
 
     def tearDown(self):
         """Clean up patches."""
@@ -304,16 +290,12 @@ class TestClickHouseConnectionPoolGetConnection(unittest.TestCase):
         """Test connection validation on checkout."""
         self._setup_mock_clickhouse_module()
         config = ClickHousePoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = ClickHouseSyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -336,9 +318,7 @@ class TestClickHouseConnectionPoolGetConnection(unittest.TestCase):
         with pool.get_connection() as conn:
             conn_id = id(conn)
             self.assertIn(conn_id, pool._connection_metadata)
-            self.assertTrue(
-                pool._connection_metadata[conn_id].in_use
-            )
+            self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -386,9 +366,7 @@ class TestClickHouseConnectionPoolRelease(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
         self.mock_clickhouse_connection = MockClickHouseConnection()
 
     def _setup_mock_clickhouse_module(self):
@@ -396,9 +374,7 @@ class TestClickHouseConnectionPoolRelease(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ).start()
-        self.mock_module.get_client.return_value = (
-            self.mock_clickhouse_connection
-        )
+        self.mock_module.get_client.return_value = self.mock_clickhouse_connection
 
     def tearDown(self):
         """Clean up patches."""
@@ -421,10 +397,7 @@ class TestClickHouseConnectionPoolRelease(unittest.TestCase):
     def test_release_connection_with_recycling(self):
         """Test connection recycling on release."""
         self._setup_mock_clickhouse_module()
-        config = ClickHousePoolConfig(
-            host="localhost",
-            recycle_on_return=True
-        )
+        config = ClickHousePoolConfig(host="localhost", recycle_on_return=True)
 
         pool = ClickHouseSyncConnectionPool(config)
         pool.initialize_pool()
@@ -434,6 +407,7 @@ class TestClickHouseConnectionPoolRelease(unittest.TestCase):
 
         # Create metadata
         from db_connections.scr.all_db_connectors.core.utils import ConnectionMetadata
+
         pool._connection_metadata[conn_id] = ConnectionMetadata(
             created_at=datetime.now() - timedelta(hours=1)
         )
@@ -456,9 +430,7 @@ class TestClickHouseConnectionPoolClose(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
         self.mock_clickhouse_connection = MockClickHouseConnection()
 
     def _setup_mock_clickhouse_module(self):
@@ -466,9 +438,7 @@ class TestClickHouseConnectionPoolClose(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ).start()
-        self.mock_module.get_client.return_value = (
-            self.mock_clickhouse_connection
-        )
+        self.mock_module.get_client.return_value = self.mock_clickhouse_connection
 
     def tearDown(self):
         """Clean up patches."""
@@ -514,9 +484,7 @@ class TestClickHouseConnectionPoolStatus(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
 
     def _setup_mock_clickhouse_module(self):
         """Set up mock clickhouse module."""
@@ -539,8 +507,7 @@ class TestClickHouseConnectionPoolStatus(unittest.TestCase):
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.clickhouse_config.max_connections +
-            self.clickhouse_config.max_overflow
+            self.clickhouse_config.max_connections + self.clickhouse_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -555,8 +522,7 @@ class TestClickHouseConnectionPoolStatus(unittest.TestCase):
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.clickhouse_config.max_connections +
-            self.clickhouse_config.max_overflow
+            self.clickhouse_config.max_connections + self.clickhouse_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
         self.assertEqual(
@@ -575,8 +541,7 @@ class TestClickHouseConnectionPoolStatus(unittest.TestCase):
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.clickhouse_config.max_connections +
-            self.clickhouse_config.max_overflow
+            self.clickhouse_config.max_connections + self.clickhouse_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
         self.assertEqual(
@@ -596,9 +561,7 @@ class TestClickHouseConnectionPoolValidation(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
         self.mock_clickhouse_connection = MockClickHouseConnection()
 
     def _setup_mock_clickhouse_module(self):
@@ -606,9 +569,7 @@ class TestClickHouseConnectionPoolValidation(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ).start()
-        self.mock_module.get_client.return_value = (
-            self.mock_clickhouse_connection
-        )
+        self.mock_module.get_client.return_value = self.mock_clickhouse_connection
 
     def tearDown(self):
         """Clean up patches."""
@@ -649,9 +610,7 @@ class TestClickHouseConnectionPoolHealth(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
         self.mock_clickhouse_connection = MockClickHouseConnection()
 
     def _setup_mock_clickhouse_module(self):
@@ -659,9 +618,7 @@ class TestClickHouseConnectionPoolHealth(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ).start()
-        self.mock_module.get_client.return_value = (
-            self.mock_clickhouse_connection
-        )
+        self.mock_module.get_client.return_value = self.mock_clickhouse_connection
 
     def tearDown(self):
         """Clean up patches."""
@@ -689,11 +646,7 @@ class TestClickHouseConnectionPoolHealth(unittest.TestCase):
 
             self.assertIn(
                 health.state,
-                [
-                    HealthState.HEALTHY,
-                    HealthState.DEGRADED,
-                    HealthState.UNHEALTHY
-                ]
+                [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
             )
 
 
@@ -709,9 +662,7 @@ class TestClickHouseConnectionPoolContextManager(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
 
     def _setup_mock_clickhouse_module(self):
         """Set up mock clickhouse module."""
@@ -770,6 +721,7 @@ class TestClickHouseConnectionPoolRetry(unittest.TestCase):
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ) as mock_module:
             call_count = [0]
+
             def get_client_side_effect(*args, **kwargs):
                 call_count[0] += 1
                 if call_count[0] == 1:
@@ -781,14 +733,14 @@ class TestClickHouseConnectionPoolRetry(unittest.TestCase):
                 else:
                     # Succeed on retry
                     return MockClickHouseConnection()
-            
+
             mock_module.get_client.side_effect = get_client_side_effect
 
             config = ClickHousePoolConfig(
                 host="localhost",
                 max_retries=3,
                 retry_delay=0.01,  # Very short delay for testing
-                min_connections=1
+                min_connections=1,
             )
 
             pool = ClickHouseSyncConnectionPool(config)
@@ -808,6 +760,7 @@ class TestClickHouseConnectionPoolRetry(unittest.TestCase):
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ) as mock_module:
             call_count = [0]
+
             def get_client_side_effect(*args, **kwargs):
                 call_count[0] += 1
                 if call_count[0] == 1:
@@ -816,23 +769,23 @@ class TestClickHouseConnectionPoolRetry(unittest.TestCase):
                 else:
                     # All subsequent calls fail (for get_connection retries)
                     raise Exception("Connection failed")
-            
+
             mock_module.get_client.side_effect = get_client_side_effect
 
             config = ClickHousePoolConfig(
                 host="localhost",
                 max_retries=2,
                 retry_delay=0.01,  # Very short delay for testing
-                min_connections=1
+                min_connections=1,
             )
 
             pool = ClickHouseSyncConnectionPool(config)
             pool.initialize_pool()
-            
+
             # Clear the pool so get_connection will try to create a new one
             while not pool._pool.empty():
                 pool._pool.get_nowait()
-            
+
             # Now get_connection will try to create a new connection, which will fail
             # After max_retries attempts, it should raise ConnectionError
             with self.assertRaisesRegex(
@@ -854,9 +807,7 @@ class TestClickHouseConnectionPoolConcurrency(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_clickhouse_pool = MockClickHouseConnectionPool(
-            max_connections=10
-        )
+        self.mock_clickhouse_pool = MockClickHouseConnectionPool(max_connections=10)
         self.mock_clickhouse_connection = MockClickHouseConnection()
 
     def _setup_mock_clickhouse_module(self):
@@ -864,9 +815,7 @@ class TestClickHouseConnectionPoolConcurrency(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ).start()
-        self.mock_module.get_client.return_value = (
-            self.mock_clickhouse_connection
-        )
+        self.mock_module.get_client.return_value = self.mock_clickhouse_connection
 
     def tearDown(self):
         """Clean up patches."""
@@ -882,7 +831,7 @@ class TestClickHouseConnectionPoolConcurrency(unittest.TestCase):
             mock_module.get_client.side_effect = [
                 MockClickHouseConnection() for _ in range(10)
             ]
-            
+
             pool = ClickHouseSyncConnectionPool(self.clickhouse_config)
             pool.initialize_pool()
 
@@ -921,6 +870,5 @@ class TestClickHouseConnectionPoolConcurrency(unittest.TestCase):
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

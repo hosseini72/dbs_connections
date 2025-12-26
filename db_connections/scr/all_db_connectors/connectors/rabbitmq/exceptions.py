@@ -23,35 +23,41 @@ __all__ = [
 
 class RabbitMQError(DatabaseError):
     """Base exception for all RabbitMQ-related errors."""
+
     pass
 
 
 class RabbitMQConnectionError(ConnectionError, RabbitMQError):
     """Raised when a RabbitMQ connection fails."""
+
     pass
 
 
 class RabbitMQTimeoutError(PoolTimeoutError, RabbitMQError):
     """Raised when a RabbitMQ operation times out."""
+
     pass
 
 
 class RabbitMQPoolError(PoolExhaustedError, RabbitMQError):
     """Raised when RabbitMQ pool operations fail."""
+
     pass
 
 
 class RabbitMQQueryError(QueryError, RabbitMQError):
     """Raised when a RabbitMQ query fails."""
+
     pass
 
 
 class RabbitMQValidationError(ValidationError, RabbitMQError):
     """Raised when RabbitMQ connection validation fails."""
+
     pass
 
 
 class RabbitMQHealthCheckError(HealthCheckError, RabbitMQError):
     """Raised when a RabbitMQ health check fails."""
-    pass
 
+    pass

@@ -15,7 +15,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'rabbitmq' / 'test_rabbitmq_health.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "rabbitmq"
+        / "test_rabbitmq_health.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -23,13 +31,14 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.config import (  # noqa: E402, E501
-    RabbitMQPoolConfig
+    RabbitMQPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.health import (  # noqa: E402
     RabbitMQHealthChecker,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState, HealthStatus
+    HealthState,
+    HealthStatus,
 )
 
 
@@ -44,7 +53,7 @@ class MockRabbitMQConnection:
         self.server_properties = {
             "product": "RabbitMQ",
             "version": "3.12.0",
-            "platform": "Erlang/OTP"
+            "platform": "Erlang/OTP",
         }
 
     def is_closing(self):
@@ -104,10 +113,7 @@ class MockAsyncRabbitMQConnection:
         self.healthy = healthy
         self.is_closed = False
         self.is_open = True
-        self.server_properties = {
-            "product": "RabbitMQ",
-            "version": "3.12.0"
-        }
+        self.server_properties = {"product": "RabbitMQ", "version": "3.12.0"}
 
     def is_closing(self):
         """Mock is_closing."""
@@ -176,9 +182,7 @@ class TestRabbitMQHealthCheckerConnection(unittest.TestCase):
 
     def test_check_health_healthy(self):
         """Test health check on healthy connection."""
-        result = self.health_checker.check_health(
-            self.mock_rabbitmq_connection
-        )
+        result = self.health_checker.check_health(self.mock_rabbitmq_connection)
 
         self.assertIsInstance(result, HealthStatus)
         self.assertEqual(result.state, HealthState.HEALTHY)
@@ -212,14 +216,11 @@ class TestRabbitMQHealthCheckerConnection(unittest.TestCase):
         conn = MockRabbitMQConnection()
 
         # Simulate slow response by patching time
-        with patch('time.time', side_effect=[0, 1.5]):  # 1.5 second delay
+        with patch("time.time", side_effect=[0, 1.5]):  # 1.5 second delay
             result = self.health_checker.check_health(conn)
 
         # Should be degraded or unhealthy due to slow response
-        self.assertIn(
-            result.state,
-            [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(result.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
 
 class TestRabbitMQHealthCheckerQueue(unittest.TestCase):
@@ -239,9 +240,7 @@ class TestRabbitMQHealthCheckerQueue(unittest.TestCase):
         conn = MockRabbitMQConnection()
         channel = conn.channel()
 
-        status = self.health_checker.check_queue_status(
-            channel, "test_queue"
-        )
+        status = self.health_checker.check_queue_status(channel, "test_queue")
 
         self.assertIsInstance(status, dict)
         self.assertIn("queue", status)
@@ -253,9 +252,7 @@ class TestRabbitMQHealthCheckerQueue(unittest.TestCase):
         channel = Mock()
         channel.queue_declare.side_effect = Exception("Error")
 
-        status = self.health_checker.check_queue_status(
-            channel, "test_queue"
-        )
+        status = self.health_checker.check_queue_status(channel, "test_queue")
 
         # Should return None on error
         self.assertIsNone(status)
@@ -278,9 +275,7 @@ class TestRabbitMQHealthCheckerExchange(unittest.TestCase):
         conn = MockRabbitMQConnection()
         channel = conn.channel()
 
-        status = self.health_checker.check_exchange_status(
-            channel, "test_exchange"
-        )
+        status = self.health_checker.check_exchange_status(channel, "test_exchange")
 
         self.assertIsInstance(status, dict)
 
@@ -289,9 +284,7 @@ class TestRabbitMQHealthCheckerExchange(unittest.TestCase):
         channel = Mock()
         channel.exchange_declare.side_effect = Exception("Error")
 
-        status = self.health_checker.check_exchange_status(
-            channel, "test_exchange"
-        )
+        status = self.health_checker.check_exchange_status(channel, "test_exchange")
 
         # Should return None on error
         self.assertIsNone(status)
@@ -340,9 +333,7 @@ class TestAsyncRabbitMQHealthChecker(unittest.IsolatedAsyncioTestCase):
             port=5672,
         )
         self.health_checker = RabbitMQHealthChecker(self.rabbitmq_config)
-        self.mock_async_rabbitmq_connection = MockAsyncRabbitMQConnection(
-            healthy=True
-        )
+        self.mock_async_rabbitmq_connection = MockAsyncRabbitMQConnection(healthy=True)
 
     async def test_async_check_health_healthy(self):
         """Test async health check on healthy connection."""
@@ -419,9 +410,7 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
 
     def test_response_time_recorded(self):
         """Test that response time is recorded."""
-        result = self.health_checker.check_health(
-            self.mock_rabbitmq_connection
-        )
+        result = self.health_checker.check_health(self.mock_rabbitmq_connection)
 
         self.assertIsNotNone(result.response_time_ms)
         self.assertGreater(result.response_time_ms, 0)
@@ -450,9 +439,7 @@ class TestRabbitMQHealthCheckerComprehensive(unittest.TestCase):
 
     def test_comprehensive_check(self):
         """Test comprehensive health check."""
-        result = self.health_checker.comprehensive_check(
-            self.mock_rabbitmq_connection
-        )
+        result = self.health_checker.comprehensive_check(self.mock_rabbitmq_connection)
 
         self.assertIsInstance(result, dict)
         self.assertIn("connection", result)
@@ -463,6 +450,5 @@ class TestRabbitMQHealthCheckerComprehensive(unittest.TestCase):
         self.assertIsInstance(result["timestamp"], datetime)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

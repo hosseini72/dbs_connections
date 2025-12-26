@@ -20,24 +20,6 @@ pip install db_connections[mongodb-async]
 pip install db_connections[mongodb]
 ```
 
-## Dependencies
-
-Add these to your `pyproject.toml`:
-
-```toml
-[project.optional-dependencies]
-mongodb-sync = [
-    "pymongo>=4.6.0",
-]
-mongodb-async = [
-    "motor>=3.3.0",
-]
-mongodb = [
-    "pymongo>=4.6.0",
-    "motor>=3.3.0",
-]
-```
-
 ## Quick Start
 
 ### Synchronous Usage

@@ -15,7 +15,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'rabbitmq' / 'test_rabbitmq_pool.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "rabbitmq"
+        / "test_rabbitmq_pool.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -23,10 +31,10 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.config import (  # noqa: E402, E501
-    RabbitMQPoolConfig
+    RabbitMQPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.pool import (  # noqa: E402, E501
-    RabbitMQSyncConnectionPool
+    RabbitMQSyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.exceptions import (  # noqa: E402
     RabbitMQConnectionError,
@@ -36,10 +44,10 @@ from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     PoolExhaustedError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 from db_connections.scr.all_db_connectors.core.utils import (  # noqa: E402
-    ConnectionMetadata
+    ConnectionMetadata,
 )
 
 
@@ -135,43 +143,43 @@ class TestRabbitMQConnectionPoolInit(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -195,12 +203,10 @@ class TestRabbitMQConnectionPoolInit(unittest.TestCase):
 
     def test_init_validates_config(self):
         """Test pool validates configuration on init."""
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             invalid_config = RabbitMQPoolConfig(
                 host="localhost",
-                max_connections=-1  # Invalid
+                max_connections=-1,  # Invalid
             )
 
     def test_repr(self):
@@ -226,43 +232,43 @@ class TestRabbitMQConnectionPoolInitialization(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -292,24 +298,18 @@ class TestRabbitMQConnectionPoolInitialization(unittest.TestCase):
         pool.initialize_pool()  # Second call should be no-op
 
         # Should only be called once
-        self.assertEqual(
-            self.mock_module.BlockingConnection.call_count, 1
-        )
+        self.assertEqual(self.mock_module.BlockingConnection.call_count, 1)
 
     def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
         with patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.pika"
         ) as mock_module:
-            mock_module.BlockingConnection.side_effect = Exception(
-                "Connection failed"
-            )
+            mock_module.BlockingConnection.side_effect = Exception("Connection failed")
 
             pool = RabbitMQSyncConnectionPool(self.rabbitmq_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 pool.initialize_pool()
 
     def test_lazy_initialization(self):
@@ -337,44 +337,44 @@ class TestRabbitMQConnectionPoolGetConnection(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
         self.mock_rabbitmq_connection = MockRabbitMQConnection()
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -409,16 +409,12 @@ class TestRabbitMQConnectionPoolGetConnection(unittest.TestCase):
         """Test connection validation on checkout."""
         self._setup_mock_pika_module()
         config = RabbitMQPoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = RabbitMQSyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -441,9 +437,7 @@ class TestRabbitMQConnectionPoolGetConnection(unittest.TestCase):
         with pool.get_connection() as conn:
             conn_id = id(conn)
             self.assertIn(conn_id, pool._connection_metadata)
-            self.assertTrue(
-                pool._connection_metadata[conn_id].in_use
-            )
+            self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -461,23 +455,25 @@ class TestRabbitMQConnectionPoolGetConnection(unittest.TestCase):
         """Test connection acquisition when pool is exhausted."""
         # Mock all pika components
         # Return a new connection each time so they have different IDs
-        mock_blocking_connection = Mock(side_effect=lambda *args, **kwargs: MockRabbitMQConnection())
+        mock_blocking_connection = Mock(
+            side_effect=lambda *args, **kwargs: MockRabbitMQConnection()
+        )
         mock_plain_credentials = Mock(return_value=Mock())
         mock_connection_params = Mock(return_value=Mock())
         mock_url_params = Mock(return_value=Mock())
-        
+
         with patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ):
             # Use config with small max to make exhaustion easier
             config = RabbitMQPoolConfig(
@@ -485,7 +481,7 @@ class TestRabbitMQConnectionPoolGetConnection(unittest.TestCase):
                 max_connections=2,
                 min_connections=1,
                 max_overflow=1,
-                timeout=1  # Short timeout to avoid hanging
+                timeout=1,  # Short timeout to avoid hanging
             )
             pool = RabbitMQSyncConnectionPool(config)
             pool.initialize_pool()
@@ -495,21 +491,21 @@ class TestRabbitMQConnectionPoolGetConnection(unittest.TestCase):
             # Use context managers to hold connections
             cm1 = pool.get_connection()
             conn1 = cm1.__enter__()  # Get first connection
-            
+
             cm2 = pool.get_connection()
             conn2 = cm2.__enter__()  # Get second connection
-            
+
             cm3 = pool.get_connection()
             conn3 = cm3.__enter__()  # Get third connection (uses overflow)
-            
+
             # Keep references to prevent garbage collection
             self._held_connections = [conn1, conn2, conn3]
             self._held_context_managers = [cm1, cm2, cm3]
-            
+
             # Now all 3 connections are in use
             # Verify we have 3 connections in metadata
             self.assertEqual(len(pool._connection_metadata), 3)
-            
+
             # Try to get a fourth connection - should fail
             # Empty the queue first to force it to try creating a new connection
             while not pool._pool.empty():
@@ -517,7 +513,7 @@ class TestRabbitMQConnectionPoolGetConnection(unittest.TestCase):
                     pool._pool.get_nowait()
                 except queue.Empty:
                     break
-            
+
             # Now try to get another connection - should raise PoolExhaustedError
             # Mock queue.get to raise Empty immediately to avoid blocking
             original_get = pool._pool.get
@@ -526,18 +522,18 @@ class TestRabbitMQConnectionPoolGetConnection(unittest.TestCase):
                 if pool._pool.empty():
                     raise queue.Empty()
                 return original_get(timeout=timeout)
-            
+
             pool._pool.get = mock_get
-            
+
             with self.assertRaisesRegex(
                 RabbitMQConnectionError, "Connection acquisition failed"
             ):
                 cm4 = pool.get_connection()
                 cm4.__enter__()  # This should raise RabbitMQConnectionError
-            
+
             # Restore original get method
             pool._pool.get = original_get
-            
+
             # Clean up - release the connections we're holding
             for cm in self._held_context_managers:
                 try:
@@ -558,44 +554,44 @@ class TestRabbitMQConnectionPoolRelease(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
         self.mock_rabbitmq_connection = MockRabbitMQConnection()
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -624,10 +620,7 @@ class TestRabbitMQConnectionPoolRelease(unittest.TestCase):
     def test_release_connection_with_recycling(self):
         """Test connection recycling on release."""
         self._setup_mock_pika_module()
-        config = RabbitMQPoolConfig(
-            host="localhost",
-            recycle_on_return=True
-        )
+        config = RabbitMQPoolConfig(host="localhost", recycle_on_return=True)
 
         pool = RabbitMQSyncConnectionPool(config)
         pool.initialize_pool()
@@ -637,6 +630,7 @@ class TestRabbitMQConnectionPoolRelease(unittest.TestCase):
 
         # Create metadata
         from db_connections.scr.all_db_connectors.core.utils import ConnectionMetadata
+
         pool._connection_metadata[conn_id] = ConnectionMetadata(
             created_at=datetime.now() - timedelta(hours=1)
         )
@@ -659,44 +653,44 @@ class TestRabbitMQConnectionPoolClose(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
         self.mock_rabbitmq_connection = MockRabbitMQConnection()
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -748,43 +742,43 @@ class TestRabbitMQConnectionPoolStatus(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -806,8 +800,7 @@ class TestRabbitMQConnectionPoolStatus(unittest.TestCase):
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.rabbitmq_config.max_connections +
-            self.rabbitmq_config.max_overflow
+            self.rabbitmq_config.max_connections + self.rabbitmq_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -822,8 +815,7 @@ class TestRabbitMQConnectionPoolStatus(unittest.TestCase):
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.rabbitmq_config.max_connections +
-            self.rabbitmq_config.max_overflow
+            self.rabbitmq_config.max_connections + self.rabbitmq_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
         self.assertEqual(
@@ -842,13 +834,10 @@ class TestRabbitMQConnectionPoolStatus(unittest.TestCase):
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.rabbitmq_config.max_connections +
-            self.rabbitmq_config.max_overflow
+            self.rabbitmq_config.max_connections + self.rabbitmq_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.rabbitmq_config.min_connections
-        )
+        self.assertEqual(metrics.min_connections, self.rabbitmq_config.min_connections)
 
 
 class TestRabbitMQConnectionPoolValidation(unittest.TestCase):
@@ -863,44 +852,44 @@ class TestRabbitMQConnectionPoolValidation(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
         self.mock_rabbitmq_connection = MockRabbitMQConnection()
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -948,44 +937,44 @@ class TestRabbitMQConnectionPoolHealth(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
         self.mock_rabbitmq_connection = MockRabbitMQConnection()
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -1019,11 +1008,7 @@ class TestRabbitMQConnectionPoolHealth(unittest.TestCase):
 
             self.assertIn(
                 health.state,
-                [
-                    HealthState.HEALTHY,
-                    HealthState.DEGRADED,
-                    HealthState.UNHEALTHY
-                ]
+                [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
             )
 
 
@@ -1039,43 +1024,43 @@ class TestRabbitMQConnectionPoolContextManager(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - use existing mock_rabbitmq_connection if available
-        mock_conn = getattr(self, 'mock_rabbitmq_connection', None) or MockRabbitMQConnection()
+        mock_conn = (
+            getattr(self, "mock_rabbitmq_connection", None) or MockRabbitMQConnection()
+        )
         mock_blocking_connection = Mock(return_value=mock_conn)
-        
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -1133,10 +1118,11 @@ class TestRabbitMQConnectionPoolRetry(unittest.TestCase):
         mock_plain_credentials = Mock(return_value=Mock())
         mock_connection_params = Mock(return_value=Mock())
         mock_url_params = Mock(return_value=Mock())
-        
+
         # For initialization: succeed (min_size=1 needs 1 connection)
         # For get_connection: fail twice, succeed on third attempt
         import pika
+
         call_count = [0]
 
         def connection_factory(*args, **kwargs):
@@ -1150,29 +1136,26 @@ class TestRabbitMQConnectionPoolRetry(unittest.TestCase):
             else:
                 # Fourth call succeeds
                 return MockRabbitMQConnection()
-        
+
         mock_blocking_connection = Mock(side_effect=connection_factory)
-        
+
         with patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.time.sleep"
         ) as mock_sleep:
             config = RabbitMQPoolConfig(
-                host="localhost",
-                max_retries=3,
-                retry_delay=0.1,
-                min_connections=1
+                host="localhost", max_retries=3, retry_delay=0.1, min_connections=1
             )
 
             pool = RabbitMQSyncConnectionPool(config)
@@ -1189,7 +1172,7 @@ class TestRabbitMQConnectionPoolRetry(unittest.TestCase):
             # Should succeed after retries
             with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
-            
+
             # Verify retries happened (sleep should have been called)
             self.assertGreater(mock_sleep.call_count, 0)
 
@@ -1199,10 +1182,11 @@ class TestRabbitMQConnectionPoolRetry(unittest.TestCase):
         mock_plain_credentials = Mock(return_value=Mock())
         mock_connection_params = Mock(return_value=Mock())
         mock_url_params = Mock(return_value=Mock())
-        
+
         # For initialization: succeed (min_size=1 needs 1 connection)
         # For get_connection: always fail
         import pika
+
         call_count = [0]
 
         def connection_factory(*args, **kwargs):
@@ -1213,21 +1197,21 @@ class TestRabbitMQConnectionPoolRetry(unittest.TestCase):
             else:
                 # All subsequent calls fail
                 raise pika.exceptions.ConnectionClosed(200, "Connection failed")
-        
+
         mock_blocking_connection = Mock(side_effect=connection_factory)
-        
+
         with patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ), patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.time.sleep"
         ) as mock_sleep:
@@ -1236,7 +1220,7 @@ class TestRabbitMQConnectionPoolRetry(unittest.TestCase):
                 max_retries=2,
                 retry_delay=0.1,
                 min_connections=1,
-                timeout=0.1  # Short timeout to avoid blocking
+                timeout=0.1,  # Short timeout to avoid blocking
             )
 
             pool = RabbitMQSyncConnectionPool(config)
@@ -1255,7 +1239,7 @@ class TestRabbitMQConnectionPoolRetry(unittest.TestCase):
             ):
                 with pool.get_connection():
                     pass
-            
+
             # Verify retries happened (sleep should have been called)
             # With max_retries=2, we should have 2 retries (attempts 1 and 2)
             self.assertGreaterEqual(mock_sleep.call_count, 2)
@@ -1273,44 +1257,44 @@ class TestRabbitMQConnectionPoolConcurrency(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(
-            max_connections=10
-        )
+        self.mock_rabbitmq_pool = MockRabbitMQConnectionPool(max_connections=10)
         self.mock_rabbitmq_connection = MockRabbitMQConnection()
 
     def _setup_mock_pika_module(self):
         """Set up mock pika module."""
         # Mock BlockingConnection - return new connection each time for concurrency tests
         # This allows test_multiple_connections to get different connection instances
-        mock_blocking_connection = Mock(side_effect=lambda *args, **kwargs: MockRabbitMQConnection())
-        
+        mock_blocking_connection = Mock(
+            side_effect=lambda *args, **kwargs: MockRabbitMQConnection()
+        )
+
         # Mock PlainCredentials to accept any arguments including None
         mock_plain_credentials = Mock(return_value=Mock())
-        
+
         # Mock ConnectionParameters to accept any arguments
         mock_connection_params = Mock(return_value=Mock())
-        
+
         # Mock URLParameters
         mock_url_params = Mock(return_value=Mock())
-        
+
         # Patch the direct imports used in pool.py
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.BlockingConnection",
-            mock_blocking_connection
+            mock_blocking_connection,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.PlainCredentials",
-            mock_plain_credentials
+            mock_plain_credentials,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.ConnectionParameters",
-            mock_connection_params
+            mock_connection_params,
         ).start()
         patch(
             "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.URLParameters",
-            mock_url_params
+            mock_url_params,
         ).start()
-        
+
         # Store references for assertions
         self.mock_module = Mock()
         self.mock_module.BlockingConnection = mock_blocking_connection
@@ -1362,6 +1346,5 @@ class TestRabbitMQConnectionPoolConcurrency(unittest.TestCase):
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

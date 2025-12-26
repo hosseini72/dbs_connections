@@ -11,6 +11,7 @@ from .health import RabbitMQHealthChecker
 # Import sync pool
 try:
     from .pool import RabbitMQSyncConnectionPool
+
     SYNC_AVAILABLE = True
 except ImportError:
     SYNC_AVAILABLE = False
@@ -19,6 +20,7 @@ except ImportError:
 # Import async pool (for now it's in pool.py but not fully implemented)
 try:
     from .pool import RabbitMQAsyncConnectionPool
+
     ASYNC_AVAILABLE = True
 except (ImportError, NotImplementedError):
     ASYNC_AVAILABLE = False

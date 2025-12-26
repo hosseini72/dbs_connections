@@ -13,6 +13,7 @@ try:
     import pika
     from pika import BlockingConnection, URLParameters, PlainCredentials
     from pika.connection import ConnectionParameters
+
     SYNC_AVAILABLE = True
 except ImportError:
     SYNC_AVAILABLE = False
@@ -24,6 +25,7 @@ except ImportError:
 # Async imports
 try:
     import aio_pika
+
     ASYNC_AVAILABLE = True
 except ImportError:
     ASYNC_AVAILABLE = False
@@ -44,7 +46,9 @@ from db_connections.scr.all_db_connectors.core.utils import (
     validate_pool_config,
     should_recycle_connection,
 )
-from db_connections.scr.all_db_connectors.connectors.rabbitmq.config import RabbitMQPoolConfig
+from db_connections.scr.all_db_connectors.connectors.rabbitmq.config import (
+    RabbitMQPoolConfig,
+)
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.exceptions import (
     RabbitMQConnectionError,
     RabbitMQValidationError,
@@ -162,12 +166,17 @@ class RabbitMQSyncConnectionPool(BaseSyncConnectionPool):
                     # Continue with other connections
 
             if self._total_connections_created == 0:
-                raise RabbitMQConnectionError("Failed to create any initial connections")
+                raise RabbitMQConnectionError(
+                    "Failed to create any initial connections"
+                )
 
             self._initialized = True
 
             # Initialize health checker after pool is created
-            from db_connections.scr.all_db_connectors.connectors.rabbitmq.health import RabbitMQHealthChecker
+            from db_connections.scr.all_db_connectors.connectors.rabbitmq.health import (
+                RabbitMQHealthChecker,
+            )
+
             self._health_checker = RabbitMQHealthChecker(self)
 
             logger.info("RabbitMQ pool initialized successfully")
@@ -192,8 +201,7 @@ class RabbitMQSyncConnectionPool(BaseSyncConnectionPool):
             credentials = None
             if params.get("username") or params.get("password"):
                 credentials = PlainCredentials(
-                    params.get("username", "guest"),
-                    params.get("password", "guest")
+                    params.get("username", "guest"), params.get("password", "guest")
                 )
 
             parameters = ConnectionParameters(
@@ -254,7 +262,9 @@ class RabbitMQSyncConnectionPool(BaseSyncConnectionPool):
                             connection = self._create_connection(conn_params)
                             conn_id = id(connection)
                             with self._metadata_lock:
-                                self._connection_metadata[conn_id] = ConnectionMetadata()
+                                self._connection_metadata[conn_id] = (
+                                    ConnectionMetadata()
+                                )
                             self._total_connections_created += 1
                         else:
                             raise PoolExhaustedError("No connections available")
@@ -284,7 +294,9 @@ class RabbitMQSyncConnectionPool(BaseSyncConnectionPool):
                             conn_id = id(connection)
                             with self._metadata_lock:
                                 if conn_id not in self._connection_metadata:
-                                    self._connection_metadata[conn_id] = ConnectionMetadata()
+                                    self._connection_metadata[conn_id] = (
+                                        ConnectionMetadata()
+                                    )
                             self._total_connections_created += 1
 
                     # Track connection metadata
@@ -306,11 +318,20 @@ class RabbitMQSyncConnectionPool(BaseSyncConnectionPool):
                 except Exception as e:
                     attempt += 1
                     if attempt > self.config.max_retries:
-                        logger.error(f"Failed to acquire connection after {attempt} attempts")
-                        raise RabbitMQConnectionError(f"Connection acquisition failed: {e}") from e
+                        logger.error(
+                            f"Failed to acquire connection after {attempt} attempts"
+                        )
+                        raise RabbitMQConnectionError(
+                            f"Connection acquisition failed: {e}"
+                        ) from e
 
-                    logger.warning(f"Connection attempt {attempt} failed, retrying: {e}")
-                    time.sleep(self.config.retry_delay * (self.config.retry_backoff ** (attempt - 1)))
+                    logger.warning(
+                        f"Connection attempt {attempt} failed, retrying: {e}"
+                    )
+                    time.sleep(
+                        self.config.retry_delay
+                        * (self.config.retry_backoff ** (attempt - 1))
+                    )
 
         finally:
             # Release connection back to pool
@@ -326,8 +347,7 @@ class RabbitMQSyncConnectionPool(BaseSyncConnectionPool):
 
                             # Check if connection should be recycled
                             if should_recycle_connection(
-                                metadata.to_dict(),
-                                self.config
+                                metadata.to_dict(), self.config
                             ):
                                 logger.debug(f"Recycling connection: {conn_id}")
                                 try:
@@ -599,4 +619,3 @@ class RabbitMQAsyncConnectionPool(BaseAsyncConnectionPool):
         super().__init__(config)
         # TODO: Implement async pool
         raise NotImplementedError("Async pool not yet implemented")
-

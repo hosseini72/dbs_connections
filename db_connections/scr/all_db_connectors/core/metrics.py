@@ -4,6 +4,7 @@ Shared types for database connectors.
 This module defines common types and data structures used across different
 database connectors in the system.
 """
+
 from typing import Optional
 from dataclasses import dataclass
 

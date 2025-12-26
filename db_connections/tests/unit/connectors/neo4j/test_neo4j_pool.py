@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'neo4j' / 'test_neo4j_pool.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "neo4j"
+        / "test_neo4j_pool.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,17 +30,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.neo4j.config import (  # noqa: E402, E501
-    Neo4jPoolConfig
+    Neo4jPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.neo4j.pool import (  # noqa: E402, E501
-    Neo4jSyncConnectionPool
+    Neo4jSyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolExhaustedError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -157,9 +165,7 @@ class TestNeo4jConnectionPoolInit(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            MockNeo4jDriver()
-        )
+        self.mock_module.GraphDatabase.driver.return_value = MockNeo4jDriver()
 
     def tearDown(self):
         """Clean up patches."""
@@ -179,12 +185,10 @@ class TestNeo4jConnectionPoolInit(unittest.TestCase):
         """Test pool validates configuration on init."""
         invalid_config = Neo4jPoolConfig(
             host="localhost",
-            max_connections=-1  # Invalid
+            max_connections=-1,  # Invalid
         )
 
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             Neo4jSyncConnectionPool(invalid_config)
 
     def test_repr(self):
@@ -217,9 +221,7 @@ class TestNeo4jConnectionPoolInitialization(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            MockNeo4jDriver()
-        )
+        self.mock_module.GraphDatabase.driver.return_value = MockNeo4jDriver()
 
     def tearDown(self):
         """Clean up patches."""
@@ -243,9 +245,7 @@ class TestNeo4jConnectionPoolInitialization(unittest.TestCase):
         pool.initialize_pool()  # Second call should be no-op
 
         # Should only be called once
-        self.assertEqual(
-            self.mock_module.GraphDatabase.driver.call_count, 1
-        )
+        self.assertEqual(self.mock_module.GraphDatabase.driver.call_count, 1)
 
     def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
@@ -258,9 +258,7 @@ class TestNeo4jConnectionPoolInitialization(unittest.TestCase):
 
             pool = Neo4jSyncConnectionPool(self.neo4j_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 pool.initialize_pool()
 
     def test_lazy_initialization(self):
@@ -296,9 +294,7 @@ class TestNeo4jConnectionPoolGetConnection(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            self.mock_neo4j_driver
-        )
+        self.mock_module.GraphDatabase.driver.return_value = self.mock_neo4j_driver
 
     def tearDown(self):
         """Clean up patches."""
@@ -327,16 +323,12 @@ class TestNeo4jConnectionPoolGetConnection(unittest.TestCase):
         """Test connection validation on checkout."""
         self._setup_mock_neo4j_module()
         config = Neo4jPoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = Neo4jSyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -359,9 +351,7 @@ class TestNeo4jConnectionPoolGetConnection(unittest.TestCase):
         with pool.get_connection() as conn:
             conn_id = id(conn)
             self.assertIn(conn_id, pool._connection_metadata)
-            self.assertTrue(
-                pool._connection_metadata[conn_id].in_use
-            )
+            self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -391,9 +381,7 @@ class TestNeo4jConnectionPoolGetConnection(unittest.TestCase):
             # Simulate pool exhaustion
             pool._connections_in_use = set(range(15))
 
-            with self.assertRaisesRegex(
-                PoolExhaustedError, "No connections available"
-            ):
+            with self.assertRaisesRegex(PoolExhaustedError, "No connections available"):
                 with pool.get_connection():
                     pass
 
@@ -418,9 +406,7 @@ class TestNeo4jConnectionPoolRelease(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            self.mock_neo4j_driver
-        )
+        self.mock_module.GraphDatabase.driver.return_value = self.mock_neo4j_driver
 
     def tearDown(self):
         """Clean up patches."""
@@ -443,10 +429,7 @@ class TestNeo4jConnectionPoolRelease(unittest.TestCase):
     def test_release_connection_with_recycling(self):
         """Test connection recycling on release."""
         self._setup_mock_neo4j_module()
-        config = Neo4jPoolConfig(
-            host="localhost",
-            recycle_on_return=True
-        )
+        config = Neo4jPoolConfig(host="localhost", recycle_on_return=True)
 
         pool = Neo4jSyncConnectionPool(config)
         pool.initialize_pool()
@@ -456,6 +439,7 @@ class TestNeo4jConnectionPoolRelease(unittest.TestCase):
 
         # Create metadata
         from db_connections.scr.all_db_connectors.core.utils import ConnectionMetadata
+
         pool._connection_metadata[conn_id] = ConnectionMetadata(
             created_at=datetime.now() - timedelta(hours=1)
         )
@@ -486,9 +470,7 @@ class TestNeo4jConnectionPoolClose(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            self.mock_neo4j_driver
-        )
+        self.mock_module.GraphDatabase.driver.return_value = self.mock_neo4j_driver
 
     def tearDown(self):
         """Clean up patches."""
@@ -541,9 +523,7 @@ class TestNeo4jConnectionPoolStatus(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            MockNeo4jDriver()
-        )
+        self.mock_module.GraphDatabase.driver.return_value = MockNeo4jDriver()
 
     def tearDown(self):
         """Clean up patches."""
@@ -559,8 +539,7 @@ class TestNeo4jConnectionPoolStatus(unittest.TestCase):
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.neo4j_config.max_connections +
-            self.neo4j_config.max_overflow
+            self.neo4j_config.max_connections + self.neo4j_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -575,13 +554,10 @@ class TestNeo4jConnectionPoolStatus(unittest.TestCase):
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.neo4j_config.max_connections +
-            self.neo4j_config.max_overflow
+            self.neo4j_config.max_connections + self.neo4j_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
-        self.assertEqual(
-            status["min_connections"], self.neo4j_config.min_connections
-        )
+        self.assertEqual(status["min_connections"], self.neo4j_config.min_connections)
 
     def test_get_metrics(self):
         """Test getting pool metrics."""
@@ -595,13 +571,10 @@ class TestNeo4jConnectionPoolStatus(unittest.TestCase):
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.neo4j_config.max_connections +
-            self.neo4j_config.max_overflow
+            self.neo4j_config.max_connections + self.neo4j_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.neo4j_config.min_connections
-        )
+        self.assertEqual(metrics.min_connections, self.neo4j_config.min_connections)
 
 
 class TestNeo4jConnectionPoolValidation(unittest.TestCase):
@@ -624,9 +597,7 @@ class TestNeo4jConnectionPoolValidation(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            self.mock_neo4j_driver
-        )
+        self.mock_module.GraphDatabase.driver.return_value = self.mock_neo4j_driver
 
     def tearDown(self):
         """Clean up patches."""
@@ -648,9 +619,7 @@ class TestNeo4jConnectionPoolValidation(unittest.TestCase):
 
         # Create connection that will fail validation
         bad_conn = Mock()
-        bad_conn.verify_connectivity.side_effect = Exception(
-            "Connection lost"
-        )
+        bad_conn.verify_connectivity.side_effect = Exception("Connection lost")
 
         result = pool.validate_connection(bad_conn)
 
@@ -677,9 +646,7 @@ class TestNeo4jConnectionPoolHealth(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            self.mock_neo4j_driver
-        )
+        self.mock_module.GraphDatabase.driver.return_value = self.mock_neo4j_driver
 
     def tearDown(self):
         """Clean up patches."""
@@ -707,11 +674,7 @@ class TestNeo4jConnectionPoolHealth(unittest.TestCase):
 
             self.assertIn(
                 health.state,
-                [
-                    HealthState.HEALTHY,
-                    HealthState.DEGRADED,
-                    HealthState.UNHEALTHY
-                ]
+                [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
             )
 
 
@@ -734,9 +697,7 @@ class TestNeo4jConnectionPoolContextManager(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            MockNeo4jDriver()
-        )
+        self.mock_module.GraphDatabase.driver.return_value = MockNeo4jDriver()
 
     def tearDown(self):
         """Clean up patches."""
@@ -789,17 +750,14 @@ class TestNeo4jConnectionPoolRetry(unittest.TestCase):
         ) as mock_module:
             # Fail twice, succeed on third attempt
             import neo4j
+
             mock_module.GraphDatabase.driver.side_effect = [
                 neo4j.exceptions.ServiceUnavailable("Connection failed"),
                 neo4j.exceptions.ServiceUnavailable("Connection failed"),
                 MockNeo4jDriver(),  # Success
             ]
 
-            config = Neo4jPoolConfig(
-                host="localhost",
-                max_retries=3,
-                retry_delay=0.1
-            )
+            config = Neo4jPoolConfig(host="localhost", max_retries=3, retry_delay=0.1)
 
             pool = Neo4jSyncConnectionPool(config)
             pool.initialize_pool()
@@ -814,15 +772,12 @@ class TestNeo4jConnectionPoolRetry(unittest.TestCase):
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ) as mock_module:
             import neo4j
+
             mock_module.GraphDatabase.driver.side_effect = (
                 neo4j.exceptions.ServiceUnavailable("Connection failed")
             )
 
-            config = Neo4jPoolConfig(
-                host="localhost",
-                max_retries=2,
-                retry_delay=0.1
-            )
+            config = Neo4jPoolConfig(host="localhost", max_retries=2, retry_delay=0.1)
 
             pool = Neo4jSyncConnectionPool(config)
             pool.initialize_pool()
@@ -854,9 +809,7 @@ class TestNeo4jConnectionPoolConcurrency(unittest.TestCase):
         self.mock_module = patch(
             "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
         ).start()
-        self.mock_module.GraphDatabase.driver.return_value = (
-            self.mock_neo4j_driver
-        )
+        self.mock_module.GraphDatabase.driver.return_value = self.mock_neo4j_driver
 
     def tearDown(self):
         """Clean up patches."""
@@ -899,6 +852,5 @@ class TestNeo4jConnectionPoolConcurrency(unittest.TestCase):
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

@@ -15,7 +15,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'postgres' / 'test_postgres_health.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "postgres"
+        / "test_postgres_health.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -23,14 +31,15 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.postgres.config import (  # noqa: E402, E501
-    PostgresPoolConfig
+    PostgresPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.postgres.health import (  # noqa: E402
     PostgresHealthChecker,
     async_check_connection,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState, HealthStatus
+    HealthState,
+    HealthStatus,
 )
 
 
@@ -122,12 +131,14 @@ class TestPostgresHealthCheckerInit(unittest.TestCase):
         )
         self.mock_pool = Mock()
         self.mock_pool.config = self.postgres_config
-        self.mock_pool.pool_status = Mock(return_value={
-            "total_connections": 5,
-            "active_connections": 2,
-            "idle_connections": 3,
-            "max_connections": 10,
-        })
+        self.mock_pool.pool_status = Mock(
+            return_value={
+                "total_connections": 5,
+                "active_connections": 2,
+                "idle_connections": 3,
+                "max_connections": 10,
+            }
+        )
 
     def test_init(self):
         """Test health checker initialization."""
@@ -150,20 +161,20 @@ class TestPostgresHealthCheckerConnection(unittest.TestCase):
         )
         self.mock_pool = Mock()
         self.mock_pool.config = self.postgres_config
-        self.mock_pool.pool_status = Mock(return_value={
-            "total_connections": 5,
-            "active_connections": 2,
-            "idle_connections": 3,
-            "max_connections": 10,
-        })
+        self.mock_pool.pool_status = Mock(
+            return_value={
+                "total_connections": 5,
+                "active_connections": 2,
+                "idle_connections": 3,
+                "max_connections": 10,
+            }
+        )
         self.health_checker = PostgresHealthChecker(self.mock_pool)
         self.mock_psycopg2_connection = MockPsycopg2Connection()
 
     def test_check_connection_healthy(self):
         """Test health check on healthy connection."""
-        result = self.health_checker.check_connection(
-            self.mock_psycopg2_connection
-        )
+        result = self.health_checker.check_connection(self.mock_psycopg2_connection)
 
         self.assertIsInstance(result, HealthStatus)
         self.assertEqual(result.state, HealthState.HEALTHY)
@@ -213,12 +224,14 @@ class TestPostgresHealthCheckerPool(unittest.TestCase):
         )
         self.mock_pool = Mock()
         self.mock_pool.config = self.postgres_config
-        self.mock_pool.pool_status = Mock(return_value={
-            "total_connections": 5,
-            "active_connections": 2,
-            "idle_connections": 3,
-            "max_connections": 10,
-        })
+        self.mock_pool.pool_status = Mock(
+            return_value={
+                "total_connections": 5,
+                "active_connections": 2,
+                "idle_connections": 3,
+                "max_connections": 10,
+            }
+        )
         self.health_checker = PostgresHealthChecker(self.mock_pool)
 
     def test_check_pool_healthy(self):
@@ -285,12 +298,14 @@ class TestPostgresHealthCheckerDatabase(unittest.TestCase):
         )
         self.mock_pool = Mock()
         self.mock_pool.config = self.postgres_config
-        self.mock_pool.pool_status = Mock(return_value={
-            "total_connections": 5,
-            "active_connections": 2,
-            "idle_connections": 3,
-            "max_connections": 10,
-        })
+        self.mock_pool.pool_status = Mock(
+            return_value={
+                "total_connections": 5,
+                "active_connections": 2,
+                "idle_connections": 3,
+                "max_connections": 10,
+            }
+        )
         self.health_checker = PostgresHealthChecker(self.mock_pool)
         self.mock_psycopg2_connection = MockPsycopg2Connection()
 
@@ -316,7 +331,7 @@ class TestPostgresHealthCheckerDatabase(unittest.TestCase):
         """Test health check on slow database."""
         # Simulate slow response
         import time
-        
+
         def slow_execute(*args, **kwargs):
             time.sleep(0.2)  # 200ms delay
 
@@ -324,26 +339,22 @@ class TestPostgresHealthCheckerDatabase(unittest.TestCase):
         mock_cursor.execute = slow_execute
         mock_cursor.fetchone = Mock(return_value=("PostgreSQL 15.0",))
         mock_cursor.close = Mock()
-        
+
         # Create mock connection with slow cursor
         mock_conn = Mock()
         mock_conn.cursor.return_value = mock_cursor
-        
+
         # Mock get_connection context manager
         self._mock_get_connection_context(mock_conn)
 
         result = self.health_checker.check_database()
 
         # Should be degraded or unhealthy due to slow response
-        self.assertIn(
-            result.state, [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(result.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
     def test_check_database_connection_error(self):
         """Test health check when database connection fails."""
-        self.mock_pool.get_connection.side_effect = Exception(
-            "Connection failed"
-        )
+        self.mock_pool.get_connection.side_effect = Exception("Connection failed")
 
         result = self.health_checker.check_database()
 
@@ -375,12 +386,14 @@ class TestPostgresHealthCheckerComprehensive(unittest.TestCase):
         )
         self.mock_pool = Mock()
         self.mock_pool.config = self.postgres_config
-        self.mock_pool.pool_status = Mock(return_value={
-            "total_connections": 5,
-            "active_connections": 2,
-            "idle_connections": 3,
-            "max_connections": 10,
-        })
+        self.mock_pool.pool_status = Mock(
+            return_value={
+                "total_connections": 5,
+                "active_connections": 2,
+                "idle_connections": 3,
+                "max_connections": 10,
+            }
+        )
         self.health_checker = PostgresHealthChecker(self.mock_pool)
         self.mock_psycopg2_connection = MockPsycopg2Connection()
 
@@ -425,9 +438,7 @@ class TestAsyncCheckConnection(unittest.IsolatedAsyncioTestCase):
     async def test_async_check_connection_unhealthy(self):
         """Test async health check on unhealthy connection."""
         bad_conn = Mock()
-        bad_conn.fetchval = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
+        bad_conn.fetchval = AsyncMock(side_effect=Exception("Connection lost"))
 
         result = await async_check_connection(bad_conn)
 
@@ -500,12 +511,14 @@ class TestHealthCheckerUtilization(unittest.TestCase):
         )
         self.mock_pool = Mock()
         self.mock_pool.config = self.postgres_config
-        self.mock_pool.pool_status = Mock(return_value={
-            "total_connections": 5,
-            "active_connections": 2,
-            "idle_connections": 3,
-            "max_connections": 10,
-        })
+        self.mock_pool.pool_status = Mock(
+            return_value={
+                "total_connections": 5,
+                "active_connections": 2,
+                "idle_connections": 3,
+                "max_connections": 10,
+            }
+        )
         self.health_checker = PostgresHealthChecker(self.mock_pool)
 
     def test_zero_max_connections(self):
@@ -572,12 +585,14 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
         )
         self.mock_pool = Mock()
         self.mock_pool.config = self.postgres_config
-        self.mock_pool.pool_status = Mock(return_value={
-            "total_connections": 5,
-            "active_connections": 2,
-            "idle_connections": 3,
-            "max_connections": 10,
-        })
+        self.mock_pool.pool_status = Mock(
+            return_value={
+                "total_connections": 5,
+                "active_connections": 2,
+                "idle_connections": 3,
+                "max_connections": 10,
+            }
+        )
         self.health_checker = PostgresHealthChecker(self.mock_pool)
         self.mock_psycopg2_connection = MockPsycopg2Connection()
 
@@ -591,14 +606,14 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
     def test_response_time_recorded(self):
         """Test that response time is recorded."""
         import time
-        
+
         # Add a small delay to the mock to ensure response time > 0
         original_cursor = self.mock_psycopg2_connection.cursor
-        
+
         def delayed_cursor():
             time.sleep(0.001)  # 1ms delay
             return original_cursor()
-        
+
         self.mock_psycopg2_connection.cursor = delayed_cursor
         self._mock_get_connection_context(self.mock_psycopg2_connection)
 
@@ -617,5 +632,5 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
         self.assertGreaterEqual(result.response_time_ms, 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

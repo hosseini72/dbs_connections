@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'mongodb' / 'test_mongodb_pool_async.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "mongodb"
+        / "test_mongodb_pool_async.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,10 +30,10 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.mongodb.config import (  # noqa: E402
-    MongoPoolConfig
+    MongoPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.mongodb.pool import (  # noqa: E402, E501
-    MongoAsyncConnectionPool
+    MongoAsyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
@@ -33,7 +41,7 @@ from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     PoolExhaustedError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -147,18 +155,16 @@ class TestAsyncMongoConnectionPoolInit(unittest.TestCase):
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return MockAsyncMongoClient()
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -181,12 +187,10 @@ class TestAsyncMongoConnectionPoolInit(unittest.TestCase):
         """Test pool validates configuration on init."""
         invalid_config = MongoPoolConfig(
             host="localhost",
-            max_connections=-1  # Invalid
+            max_connections=-1,  # Invalid
         )
 
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             MongoAsyncConnectionPool(invalid_config)
 
     def test_repr(self):
@@ -200,9 +204,7 @@ class TestAsyncMongoConnectionPoolInit(unittest.TestCase):
         self.assertIn("27017", repr_str)
 
 
-class TestAsyncMongoConnectionPoolInitialization(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolInitialization(unittest.IsolatedAsyncioTestCase):
     """Test async pool initialization."""
 
     def setUp(self):
@@ -214,18 +216,16 @@ class TestAsyncMongoConnectionPoolInitialization(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return MockAsyncMongoClient()
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -254,21 +254,19 @@ class TestAsyncMongoConnectionPoolInitialization(
 
     async def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
+
         async def failing_create_client(**kwargs):
             raise Exception("Connection failed")
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         with patch(patch_path) as mock_module:
             mock_module.AsyncIOMotorClient = failing_create_client
 
             pool = MongoAsyncConnectionPool(self.mongo_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 await pool.initialize_pool()
 
     async def test_lazy_initialization(self):
@@ -284,9 +282,7 @@ class TestAsyncMongoConnectionPoolInitialization(
         self.assertTrue(pool._initialized)
 
 
-class TestAsyncMongoConnectionPoolGetConnection(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolGetConnection(unittest.IsolatedAsyncioTestCase):
     """Test async connection acquisition."""
 
     def setUp(self):
@@ -298,19 +294,17 @@ class TestAsyncMongoConnectionPoolGetConnection(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
         self.mock_async_mongo_client = MockAsyncMongoClient()
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_mongo_client
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -342,16 +336,12 @@ class TestAsyncMongoConnectionPoolGetConnection(
         """Test connection validation on checkout."""
         self._setup_mock_async_mongo_module()
         config = MongoPoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = MongoAsyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -375,9 +365,7 @@ class TestAsyncMongoConnectionPoolGetConnection(
             conn_id = id(conn)
             async with pool._metadata_lock:
                 self.assertIn(conn_id, pool._connection_metadata)
-                self.assertTrue(
-                    pool._connection_metadata[conn_id].in_use
-                )
+                self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     async def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -393,7 +381,7 @@ class TestAsyncMongoConnectionPoolGetConnection(
 
     async def test_get_connection_timeout(self):
         """Test connection acquisition timeout.
-        
+
         Note: MongoDB pool doesn't implement timeout in get_connection
         since it wraps the client which handles timeouts internally.
         This test verifies PoolExhaustedError is raised when pool is full.
@@ -412,9 +400,7 @@ class TestAsyncMongoConnectionPoolGetConnection(
                 pass
 
 
-class TestAsyncMongoConnectionPoolRelease(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolRelease(unittest.IsolatedAsyncioTestCase):
     """Test async connection release."""
 
     def setUp(self):
@@ -426,19 +412,17 @@ class TestAsyncMongoConnectionPoolRelease(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
         self.mock_async_mongo_client = MockAsyncMongoClient()
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_mongo_client
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -462,9 +446,7 @@ class TestAsyncMongoConnectionPoolRelease(
         self.assertNotIn(conn_id, pool._connections_in_use)
 
 
-class TestAsyncMongoConnectionPoolClose(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolClose(unittest.IsolatedAsyncioTestCase):
     """Test async pool closing."""
 
     def setUp(self):
@@ -476,19 +458,17 @@ class TestAsyncMongoConnectionPoolClose(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
         self.mock_async_mongo_client = MockAsyncMongoClient()
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_mongo_client
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -524,9 +504,7 @@ class TestAsyncMongoConnectionPoolClose(
         self.assertEqual(len(pool._connections_in_use), 0)
 
 
-class TestAsyncMongoConnectionPoolStatus(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolStatus(unittest.IsolatedAsyncioTestCase):
     """Test async pool status and metrics."""
 
     def setUp(self):
@@ -538,18 +516,16 @@ class TestAsyncMongoConnectionPoolStatus(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return MockAsyncMongoClient()
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -568,8 +544,7 @@ class TestAsyncMongoConnectionPoolStatus(
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.mongo_config.max_connections +
-            self.mongo_config.max_overflow
+            self.mongo_config.max_connections + self.mongo_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -584,13 +559,10 @@ class TestAsyncMongoConnectionPoolStatus(
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.mongo_config.max_connections +
-            self.mongo_config.max_overflow
+            self.mongo_config.max_connections + self.mongo_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
-        self.assertEqual(
-            status["min_connections"], self.mongo_config.min_connections
-        )
+        self.assertEqual(status["min_connections"], self.mongo_config.min_connections)
 
     async def test_get_metrics(self):
         """Test getting pool metrics."""
@@ -604,18 +576,13 @@ class TestAsyncMongoConnectionPoolStatus(
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.mongo_config.max_connections +
-            self.mongo_config.max_overflow
+            self.mongo_config.max_connections + self.mongo_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.mongo_config.min_connections
-        )
+        self.assertEqual(metrics.min_connections, self.mongo_config.min_connections)
 
 
-class TestAsyncMongoConnectionPoolValidation(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolValidation(unittest.IsolatedAsyncioTestCase):
     """Test async connection validation."""
 
     def setUp(self):
@@ -627,19 +594,17 @@ class TestAsyncMongoConnectionPoolValidation(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
         self.mock_async_mongo_client = MockAsyncMongoClient()
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_mongo_client
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -653,9 +618,7 @@ class TestAsyncMongoConnectionPoolValidation(
         self._setup_mock_async_mongo_module()
         pool = MongoAsyncConnectionPool(self.mongo_config)
 
-        result = await pool.validate_connection(
-            self.mock_async_mongo_client
-        )
+        result = await pool.validate_connection(self.mock_async_mongo_client)
 
         self.assertTrue(result)
 
@@ -667,10 +630,8 @@ class TestAsyncMongoConnectionPoolValidation(
         # Create connection that will fail validation
         # Mock admin database with command that raises exception
         bad_admin_db = MockAsyncMongoDatabase()
-        bad_admin_db.command = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
-        
+        bad_admin_db.command = AsyncMock(side_effect=Exception("Connection lost"))
+
         bad_conn = MockAsyncMongoClient()
         bad_conn.admin = lambda: bad_admin_db
 
@@ -679,9 +640,7 @@ class TestAsyncMongoConnectionPoolValidation(
         self.assertFalse(result)
 
 
-class TestAsyncMongoConnectionPoolHealth(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolHealth(unittest.IsolatedAsyncioTestCase):
     """Test async health checks."""
 
     def setUp(self):
@@ -693,19 +652,17 @@ class TestAsyncMongoConnectionPoolHealth(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
         self.mock_async_mongo_client = MockAsyncMongoClient()
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_mongo_client
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -744,7 +701,8 @@ class TestAsyncMongoConnectionPoolHealth(
         # If health_checker is not working, it falls back to simple ping check
         # which returns HEALTHY, so we allow both for now
         self.assertIn(
-            health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY, HealthState.HEALTHY]
+            health.state,
+            [HealthState.DEGRADED, HealthState.UNHEALTHY, HealthState.HEALTHY],
         )
 
     async def test_database_health_check(self):
@@ -757,18 +715,12 @@ class TestAsyncMongoConnectionPoolHealth(
 
         self.assertIn(
             health.state,
-            [
-                HealthState.HEALTHY,
-                HealthState.DEGRADED,
-                HealthState.UNHEALTHY
-            ]
+            [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
         )
         self.assertIsNotNone(health.response_time_ms)
 
 
-class TestAsyncMongoConnectionPoolContextManager(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolContextManager(unittest.IsolatedAsyncioTestCase):
     """Test async context manager support."""
 
     def setUp(self):
@@ -780,18 +732,16 @@ class TestAsyncMongoConnectionPoolContextManager(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return MockAsyncMongoClient()
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -803,9 +753,7 @@ class TestAsyncMongoConnectionPoolContextManager(
     async def test_context_manager_enter(self):
         """Test pool async context manager enter."""
         self._setup_mock_async_mongo_module()
-        async with MongoAsyncConnectionPool(
-            self.mongo_config
-        ) as pool:
+        async with MongoAsyncConnectionPool(self.mongo_config) as pool:
             self.assertTrue(pool._initialized)
             self.assertFalse(pool._closed)
 
@@ -822,18 +770,14 @@ class TestAsyncMongoConnectionPoolContextManager(
     async def test_context_manager_with_connections(self):
         """Test using connections within async context manager."""
         self._setup_mock_async_mongo_module()
-        async with MongoAsyncConnectionPool(
-            self.mongo_config
-        ) as pool:
+        async with MongoAsyncConnectionPool(self.mongo_config) as pool:
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
         self.assertTrue(pool._closed)
 
 
-class TestAsyncMongoConnectionPoolConcurrency(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncMongoConnectionPoolConcurrency(unittest.IsolatedAsyncioTestCase):
     """Test concurrent async operations."""
 
     def setUp(self):
@@ -845,19 +789,17 @@ class TestAsyncMongoConnectionPoolConcurrency(
             min_connections=1,
             timeout=30,
         )
-        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(
-            max_pool_size=10
-        )
+        self.mock_async_mongo_pool = MockAsyncMongoConnectionPool(max_pool_size=10)
         self.mock_async_mongo_client = MockAsyncMongoClient()
 
     def _setup_mock_async_mongo_module(self):
         """Set up mock motor module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_mongo_client
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "mongodb.pool.motor"
+            "db_connections.scr.all_db_connectors.connectors.mongodb.pool.motor"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.AsyncIOMotorClient = create_client_mock
@@ -903,6 +845,5 @@ class TestAsyncMongoConnectionPoolConcurrency(
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

@@ -1,7 +1,6 @@
 """This module defines the health status of a database connection pool or database.
 It includes the health state, message, and additional details about the health status."""
 
-
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum

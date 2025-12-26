@@ -38,26 +38,6 @@ pip install db_connections[rabbitmq]
 
 ---
 
-## Dependencies
-
-Add these to your `pyproject.toml`:
-
-```toml
-[project.optional-dependencies]
-rabbitmq-sync = [
-    "pika>=1.3.0",
-]
-rabbitmq-async = [
-    "aio-pika>=9.0.0",
-]
-rabbitmq = [
-    "pika>=1.3.0",
-    "aio-pika>=9.0.0",
-]
-```
-
----
-
 ## Quick Start
 
 ### Synchronous Usage

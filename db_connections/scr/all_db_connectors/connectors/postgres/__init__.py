@@ -4,14 +4,14 @@ This module provides synchronous and asynchronous connection pools for PostgreSQ
 
 Synchronous usage (psycopg2):
     >>> from db_connections.scr.all_db_connectors.connectors.postgres import PostgresConnectionPool, PostgresPoolConfig
-    >>> 
+    >>>
     >>> config = PostgresPoolConfig(
     ...     host="localhost",
     ...     database="mydb",
     ...     user="user",
     ...     password="pass"
     ... )
-    >>> 
+    >>>
     >>> with PostgresConnectionPool(config) as pool:
     ...     with pool.get_connection() as conn:
     ...         cursor = conn.cursor()
@@ -20,14 +20,14 @@ Synchronous usage (psycopg2):
 
 Asynchronous usage (asyncpg):
     >>> from db_connections.scr.all_db_connectors.connectors.postgres import AsyncPostgresConnectionPool, PostgresPoolConfig
-    >>> 
+    >>>
     >>> config = PostgresPoolConfig(
     ...     host="localhost",
     ...     database="mydb",
     ...     user="user",
     ...     password="pass"
     ... )
-    >>> 
+    >>>
     >>> async with AsyncPostgresConnectionPool(config) as pool:
     ...     async with pool.get_connection() as conn:
     ...         results = await conn.fetch("SELECT * FROM users")
@@ -39,6 +39,7 @@ from .health import PostgresHealthChecker, async_check_connection
 # Import sync pool
 try:
     from .pool import PostgresConnectionPool
+
     SYNC_AVAILABLE = True
 except ImportError:
     SYNC_AVAILABLE = False
@@ -47,6 +48,7 @@ except ImportError:
 # Import async pool
 try:
     from .pool_async import AsyncPostgresConnectionPool
+
     ASYNC_AVAILABLE = True
 except ImportError:
     ASYNC_AVAILABLE = False
@@ -66,7 +68,7 @@ __all__ = [
 
 def check_availability():
     """Check which PostgreSQL drivers are available.
-    
+
     Returns:
         Dictionary with availability status.
     """

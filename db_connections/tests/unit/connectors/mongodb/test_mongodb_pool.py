@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'mongodb' / 'test_mongodb_pool.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "mongodb"
+        / "test_mongodb_pool.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,17 +30,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.mongodb.config import (  # noqa: E402, E501
-    MongoPoolConfig
+    MongoPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.mongodb.pool import (  # noqa: E402, E501
-    MongoSyncConnectionPool
+    MongoSyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolExhaustedError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -173,12 +181,10 @@ class TestMongoConnectionPoolInit(unittest.TestCase):
         """Test pool validates configuration on init."""
         invalid_config = MongoPoolConfig(
             host="localhost",
-            max_connections=-1  # Invalid
+            max_connections=-1,  # Invalid
         )
 
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             MongoSyncConnectionPool(invalid_config)
 
     def test_repr(self):
@@ -235,24 +241,18 @@ class TestMongoConnectionPoolInitialization(unittest.TestCase):
         pool.initialize_pool()  # Second call should be no-op
 
         # Should only be called once
-        self.assertEqual(
-            self.mock_module.MongoClient.call_count, 1
-        )
+        self.assertEqual(self.mock_module.MongoClient.call_count, 1)
 
     def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
         with patch(
             "db_connections.scr.all_db_connectors.connectors.mongodb.pool.pymongo"
         ) as mock_module:
-            mock_module.MongoClient.side_effect = Exception(
-                "Connection failed"
-            )
+            mock_module.MongoClient.side_effect = Exception("Connection failed")
 
             pool = MongoSyncConnectionPool(self.mongo_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 pool.initialize_pool()
 
     def test_lazy_initialization(self):
@@ -317,16 +317,12 @@ class TestMongoConnectionPoolGetConnection(unittest.TestCase):
         """Test connection validation on checkout."""
         self._setup_mock_mongo_module()
         config = MongoPoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = MongoSyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -349,9 +345,7 @@ class TestMongoConnectionPoolGetConnection(unittest.TestCase):
         with pool.get_connection() as conn:
             conn_id = id(conn)
             self.assertIn(conn_id, pool._connection_metadata)
-            self.assertTrue(
-                pool._connection_metadata[conn_id].in_use
-            )
+            self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -381,9 +375,7 @@ class TestMongoConnectionPoolGetConnection(unittest.TestCase):
             # Simulate pool exhaustion
             pool._connections_in_use = set(range(15))
 
-            with self.assertRaisesRegex(
-                PoolExhaustedError, "No connections available"
-            ):
+            with self.assertRaisesRegex(PoolExhaustedError, "No connections available"):
                 with pool.get_connection():
                     pass
 
@@ -431,10 +423,7 @@ class TestMongoConnectionPoolRelease(unittest.TestCase):
     def test_release_connection_with_recycling(self):
         """Test connection recycling on release."""
         self._setup_mock_mongo_module()
-        config = MongoPoolConfig(
-            host="localhost",
-            recycle_on_return=True
-        )
+        config = MongoPoolConfig(host="localhost", recycle_on_return=True)
 
         pool = MongoSyncConnectionPool(config)
         pool.initialize_pool()
@@ -444,6 +433,7 @@ class TestMongoConnectionPoolRelease(unittest.TestCase):
 
         # Create metadata
         from db_connections.scr.all_db_connectors.core.utils import ConnectionMetadata
+
         pool._connection_metadata[conn_id] = ConnectionMetadata(
             created_at=datetime.now() - timedelta(hours=1)
         )
@@ -543,8 +533,7 @@ class TestMongoConnectionPoolStatus(unittest.TestCase):
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.mongo_config.max_connections +
-            self.mongo_config.max_overflow
+            self.mongo_config.max_connections + self.mongo_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -559,13 +548,10 @@ class TestMongoConnectionPoolStatus(unittest.TestCase):
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.mongo_config.max_connections +
-            self.mongo_config.max_overflow
+            self.mongo_config.max_connections + self.mongo_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
-        self.assertEqual(
-            status["min_connections"], self.mongo_config.min_connections
-        )
+        self.assertEqual(status["min_connections"], self.mongo_config.min_connections)
 
     def test_get_metrics(self):
         """Test getting pool metrics."""
@@ -579,13 +565,10 @@ class TestMongoConnectionPoolStatus(unittest.TestCase):
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.mongo_config.max_connections +
-            self.mongo_config.max_overflow
+            self.mongo_config.max_connections + self.mongo_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.mongo_config.min_connections
-        )
+        self.assertEqual(metrics.min_connections, self.mongo_config.min_connections)
 
 
 class TestMongoConnectionPoolValidation(unittest.TestCase):
@@ -685,11 +668,7 @@ class TestMongoConnectionPoolHealth(unittest.TestCase):
 
             self.assertIn(
                 health.state,
-                [
-                    HealthState.HEALTHY,
-                    HealthState.DEGRADED,
-                    HealthState.UNHEALTHY
-                ]
+                [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
             )
 
 
@@ -765,17 +744,14 @@ class TestMongoConnectionPoolRetry(unittest.TestCase):
         ) as mock_module:
             # Fail twice, succeed on third attempt
             import pymongo
+
             mock_module.MongoClient.side_effect = [
                 pymongo.errors.ConnectionFailure("Connection failed"),
                 pymongo.errors.ConnectionFailure("Connection failed"),
                 MockMongoClient(),  # Success
             ]
 
-            config = MongoPoolConfig(
-                host="localhost",
-                max_retries=3,
-                retry_delay=0.1
-            )
+            config = MongoPoolConfig(host="localhost", max_retries=3, retry_delay=0.1)
 
             pool = MongoSyncConnectionPool(config)
             pool.initialize_pool()
@@ -790,15 +766,12 @@ class TestMongoConnectionPoolRetry(unittest.TestCase):
             "db_connections.scr.all_db_connectors.connectors.mongodb.pool.pymongo"
         ) as mock_module:
             import pymongo
+
             mock_module.MongoClient.side_effect = pymongo.errors.ConnectionFailure(
                 "Connection failed"
             )
 
-            config = MongoPoolConfig(
-                host="localhost",
-                max_retries=2,
-                retry_delay=0.1
-            )
+            config = MongoPoolConfig(host="localhost", max_retries=2, retry_delay=0.1)
 
             pool = MongoSyncConnectionPool(config)
             pool.initialize_pool()
@@ -873,6 +846,5 @@ class TestMongoConnectionPoolConcurrency(unittest.TestCase):
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

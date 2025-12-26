@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'redis' / 'test_redis_pool.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "redis"
+        / "test_redis_pool.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,17 +30,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.redis.config import (  # noqa: E402, E501
-    RedisPoolConfig
+    RedisPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.redis.pool import (  # noqa: E402, E501
-    RedisSyncConnectionPool
+    RedisSyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolExhaustedError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -149,12 +157,10 @@ class TestRedisConnectionPoolInit(unittest.TestCase):
 
     def test_init_validates_config(self):
         """Test pool validates configuration on init."""
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             invalid_config = RedisPoolConfig(
                 host="localhost",
-                max_connections=-1  # Invalid
+                max_connections=-1,  # Invalid
             )
             # Config creation raises the error, but we test pool creation too
             RedisSyncConnectionPool(invalid_config)
@@ -213,24 +219,18 @@ class TestRedisConnectionPoolInitialization(unittest.TestCase):
         pool.initialize_pool()  # Second call should be no-op
 
         # Should only be called once
-        self.assertEqual(
-            self.mock_module.ConnectionPool.call_count, 1
-        )
+        self.assertEqual(self.mock_module.ConnectionPool.call_count, 1)
 
     def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
         with patch(
             "db_connections.scr.all_db_connectors.connectors.redis.pool.redis"
         ) as mock_module:
-            mock_module.ConnectionPool.side_effect = Exception(
-                "Connection failed"
-            )
+            mock_module.ConnectionPool.side_effect = Exception("Connection failed")
 
             pool = RedisSyncConnectionPool(self.redis_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 pool.initialize_pool()
 
     def test_lazy_initialization(self):
@@ -296,16 +296,12 @@ class TestRedisConnectionPoolGetConnection(unittest.TestCase):
         """Test connection validation on checkout."""
         self._setup_mock_redis_module()
         config = RedisPoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = RedisSyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -328,9 +324,7 @@ class TestRedisConnectionPoolGetConnection(unittest.TestCase):
         with pool.get_connection() as conn:
             conn_id = id(conn)
             self.assertIn(conn_id, pool._connection_metadata)
-            self.assertTrue(
-                pool._connection_metadata[conn_id].in_use
-            )
+            self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -356,9 +350,7 @@ class TestRedisConnectionPoolGetConnection(unittest.TestCase):
             pool = RedisSyncConnectionPool(self.redis_config)
             pool.initialize_pool()
 
-            with self.assertRaisesRegex(
-                PoolExhaustedError, "No connections available"
-            ):
+            with self.assertRaisesRegex(PoolExhaustedError, "No connections available"):
                 with pool.get_connection():
                     pass
 
@@ -406,10 +398,7 @@ class TestRedisConnectionPoolRelease(unittest.TestCase):
     def test_release_connection_with_recycling(self):
         """Test connection recycling on release."""
         self._setup_mock_redis_module()
-        config = RedisPoolConfig(
-            host="localhost",
-            recycle_on_return=True
-        )
+        config = RedisPoolConfig(host="localhost", recycle_on_return=True)
 
         pool = RedisSyncConnectionPool(config)
         pool.initialize_pool()
@@ -419,6 +408,7 @@ class TestRedisConnectionPoolRelease(unittest.TestCase):
 
         # Create metadata
         from db_connections.scr.all_db_connectors.core.utils import ConnectionMetadata
+
         pool._connection_metadata[conn_id] = ConnectionMetadata(
             created_at=datetime.now() - timedelta(hours=1)
         )
@@ -518,8 +508,7 @@ class TestRedisConnectionPoolStatus(unittest.TestCase):
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.redis_config.max_connections +
-            self.redis_config.max_overflow
+            self.redis_config.max_connections + self.redis_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -534,13 +523,10 @@ class TestRedisConnectionPoolStatus(unittest.TestCase):
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.redis_config.max_connections +
-            self.redis_config.max_overflow
+            self.redis_config.max_connections + self.redis_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
-        self.assertEqual(
-            status["min_connections"], self.redis_config.min_connections
-        )
+        self.assertEqual(status["min_connections"], self.redis_config.min_connections)
 
     def test_get_metrics(self):
         """Test getting pool metrics."""
@@ -554,13 +540,10 @@ class TestRedisConnectionPoolStatus(unittest.TestCase):
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.redis_config.max_connections +
-            self.redis_config.max_overflow
+            self.redis_config.max_connections + self.redis_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.redis_config.min_connections
-        )
+        self.assertEqual(metrics.min_connections, self.redis_config.min_connections)
 
 
 class TestRedisConnectionPoolValidation(unittest.TestCase):
@@ -660,11 +643,7 @@ class TestRedisConnectionPoolHealth(unittest.TestCase):
 
             self.assertIn(
                 health.state,
-                [
-                    HealthState.HEALTHY,
-                    HealthState.DEGRADED,
-                    HealthState.UNHEALTHY
-                ]
+                [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
             )
 
 
@@ -742,6 +721,7 @@ class TestRedisConnectionPoolRetry(unittest.TestCase):
 
             # Fail twice, succeed on third attempt
             import redis
+
             mock_pool.get_connection.side_effect = [
                 redis.ConnectionError("Connection failed"),
                 redis.ConnectionError("Connection failed"),
@@ -750,11 +730,7 @@ class TestRedisConnectionPoolRetry(unittest.TestCase):
 
             mock_module.ConnectionPool.return_value = mock_pool
 
-            config = RedisPoolConfig(
-                host="localhost",
-                max_retries=3,
-                retry_delay=0.1
-            )
+            config = RedisPoolConfig(host="localhost", max_retries=3, retry_delay=0.1)
 
             pool = RedisSyncConnectionPool(config)
             pool.initialize_pool()
@@ -771,17 +747,14 @@ class TestRedisConnectionPoolRetry(unittest.TestCase):
             mock_pool = MagicMock()
 
             import redis
+
             mock_pool.get_connection.side_effect = redis.ConnectionError(
                 "Connection failed"
             )
 
             mock_module.ConnectionPool.return_value = mock_pool
 
-            config = RedisPoolConfig(
-                host="localhost",
-                max_retries=2,
-                retry_delay=0.1
-            )
+            config = RedisPoolConfig(host="localhost", max_retries=2, retry_delay=0.1)
 
             pool = RedisSyncConnectionPool(config)
             pool.initialize_pool()
@@ -856,6 +829,5 @@ class TestRedisConnectionPoolConcurrency(unittest.TestCase):
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

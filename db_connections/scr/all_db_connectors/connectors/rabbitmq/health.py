@@ -21,7 +21,14 @@ if TYPE_CHECKING:
 class RabbitMQHealthChecker:
     """Health checker for RabbitMQ connections and pools."""
 
-    def __init__(self, pool_or_config: Union["RabbitMQSyncConnectionPool", "RabbitMQAsyncConnectionPool", "RabbitMQPoolConfig"]):
+    def __init__(
+        self,
+        pool_or_config: Union[
+            "RabbitMQSyncConnectionPool",
+            "RabbitMQAsyncConnectionPool",
+            "RabbitMQPoolConfig",
+        ],
+    ):
         """Initialize health checker.
 
         Args:
@@ -309,7 +316,12 @@ class RabbitMQHealthChecker:
                 # Try to create a channel to check server health
                 channel = connection.channel()
                 # Declare a test queue to verify server is responding
-                channel.queue_declare(queue="health_check", durable=False, auto_delete=True, exclusive=True)
+                channel.queue_declare(
+                    queue="health_check",
+                    durable=False,
+                    auto_delete=True,
+                    exclusive=True,
+                )
                 channel.queue_delete(queue="health_check")
                 channel.close()
 
@@ -349,7 +361,9 @@ class RabbitMQHealthChecker:
                 # Try to create a channel to check server health
                 channel = await connection.channel()
                 # Declare a test queue to verify server is responding
-                queue = await channel.declare_queue("health_check", durable=False, auto_delete=True)
+                queue = await channel.declare_queue(
+                    "health_check", durable=False, auto_delete=True
+                )
                 await queue.delete()
                 await channel.close()
 
@@ -430,7 +444,9 @@ class RabbitMQHealthChecker:
         except Exception:
             return None
 
-    def check_exchange_status(self, channel, exchange_name: str) -> Optional[Dict[str, Any]]:
+    def check_exchange_status(
+        self, channel, exchange_name: str
+    ) -> Optional[Dict[str, Any]]:
         """Check status of a specific exchange.
 
         Args:
@@ -459,7 +475,10 @@ class RabbitMQHealthChecker:
             Dictionary with server information, or None on error.
         """
         try:
-            if hasattr(connection, "server_properties") and connection.server_properties:
+            if (
+                hasattr(connection, "server_properties")
+                and connection.server_properties
+            ):
                 return {
                     "product": connection.server_properties.get("product", "Unknown"),
                     "version": connection.server_properties.get("version", "Unknown"),
@@ -486,4 +505,3 @@ class RabbitMQHealthChecker:
             "server": server_info,
             "timestamp": datetime.now(),
         }
-

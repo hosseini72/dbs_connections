@@ -13,7 +13,14 @@ try:
     _file_path = Path(__file__).resolve()
 except NameError:
     # __file__ might not be defined in some contexts
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'neo4j' / 'test_neo4j_config.py'  # noqa: E501
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "neo4j"
+        / "test_neo4j_config.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -21,7 +28,7 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.neo4j.config import (  # noqa: E402, E501
-    Neo4jPoolConfig
+    Neo4jPoolConfig,
 )
 
 
@@ -30,9 +37,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
 
     def test_default_values(self):
         """Test default configuration values."""
-        config = Neo4jPoolConfig(
-            host="localhost"
-        )
+        config = Neo4jPoolConfig(host="localhost")
 
         self.assertEqual(config.host, "localhost")
         self.assertEqual(config.port, 7687)
@@ -57,7 +62,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
             max_idle_time=120,
             max_lifetime=7200,
             encrypted=True,
-            trust="TRUST_ALL_CERTIFICATES"
+            trust="TRUST_ALL_CERTIFICATES",
         )
 
         self.assertEqual(config.host, "neo4j.example.com")
@@ -100,13 +105,16 @@ class TestNeo4jPoolConfig(unittest.TestCase):
         # Create invalid config (should succeed)
         config = Neo4jPoolConfig(host="localhost", max_connections=0)
         # Validation happens when creating pool
-        from db_connections.scr.all_db_connectors.connectors.neo4j.pool import Neo4jSyncConnectionPool
+        from db_connections.scr.all_db_connectors.connectors.neo4j.pool import (
+            Neo4jSyncConnectionPool,
+        )
+
         # Mock neo4j module to avoid import errors
-        with patch('db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j') as mock_neo4j:
+        with patch(
+            "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
+        ) as mock_neo4j:
             mock_neo4j.GraphDatabase = Mock()
-            with self.assertRaisesRegex(
-                ValueError, "max_connections must be positive"
-            ):
+            with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
                 Neo4jSyncConnectionPool(config)
 
     def test_invalid_min_connections(self):
@@ -115,13 +123,16 @@ class TestNeo4jPoolConfig(unittest.TestCase):
         # Create invalid config (should succeed) - use negative value since validation checks min_size < 0
         config = Neo4jPoolConfig(host="localhost", min_connections=-1)
         # Validation happens when creating pool
-        from db_connections.scr.all_db_connectors.connectors.neo4j.pool import Neo4jSyncConnectionPool
+        from db_connections.scr.all_db_connectors.connectors.neo4j.pool import (
+            Neo4jSyncConnectionPool,
+        )
+
         # Mock neo4j module to avoid import errors
-        with patch('db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j') as mock_neo4j:
+        with patch(
+            "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
+        ) as mock_neo4j:
             mock_neo4j.GraphDatabase = Mock()
-            with self.assertRaisesRegex(
-                ValueError, "min_connections must be positive"
-            ):
+            with self.assertRaisesRegex(ValueError, "min_connections must be positive"):
                 Neo4jSyncConnectionPool(config)
 
     def test_min_greater_than_max(self):
@@ -129,14 +140,17 @@ class TestNeo4jPoolConfig(unittest.TestCase):
         # Validation is deferred to pool creation, not config creation
         # Create invalid config (should succeed)
         config = Neo4jPoolConfig(
-            host="localhost",
-            min_connections=20,
-            max_connections=10
+            host="localhost", min_connections=20, max_connections=10
         )
         # Validation happens when creating pool
-        from db_connections.scr.all_db_connectors.connectors.neo4j.pool import Neo4jSyncConnectionPool
+        from db_connections.scr.all_db_connectors.connectors.neo4j.pool import (
+            Neo4jSyncConnectionPool,
+        )
+
         # Mock neo4j module to avoid import errors
-        with patch('db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j') as mock_neo4j:
+        with patch(
+            "db_connections.scr.all_db_connectors.connectors.neo4j.pool.neo4j"
+        ) as mock_neo4j:
             mock_neo4j.GraphDatabase = Mock()
             with self.assertRaisesRegex(
                 ValueError, "min_connections cannot be greater"
@@ -146,24 +160,18 @@ class TestNeo4jPoolConfig(unittest.TestCase):
     def test_invalid_trust(self):
         """Test validation of trust setting."""
         with self.assertRaisesRegex(ValueError, "Invalid trust"):
-            Neo4jPoolConfig(
-                host="localhost",
-                trust="INVALID"
-            )
+            Neo4jPoolConfig(host="localhost", trust="INVALID")
 
     def test_valid_trust_values(self):
         """Test all valid trust values."""
         valid_trusts = [
             "TRUST_ALL_CERTIFICATES",
             "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
-            "TRUST_CUSTOM_CA_SIGNED_CERTIFICATES"
+            "TRUST_CUSTOM_CA_SIGNED_CERTIFICATES",
         ]
 
         for trust in valid_trusts:
-            config = Neo4jPoolConfig(
-                host="localhost",
-                trust=trust
-            )
+            config = Neo4jPoolConfig(host="localhost", trust=trust)
             self.assertEqual(config.trust, trust)
 
     def test_get_connection_params(self):
@@ -177,7 +185,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
             encrypted=True,
             trust="TRUST_ALL_CERTIFICATES",
             connection_timeout=10,
-            max_retry_time=30
+            max_retry_time=30,
         )
 
         params = config.get_connection_params()
@@ -192,10 +200,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
 
     def test_get_connection_params_no_auth(self):
         """Test connection parameters without authentication."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            port=7687
-        )
+        config = Neo4jPoolConfig(host="localhost", port=7687)
 
         params = config.get_connection_params()
 
@@ -207,20 +212,14 @@ class TestNeo4jPoolConfig(unittest.TestCase):
             host="localhost",
             encrypted=True,
             trust="TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
-            trusted_certificate="/path/to/ca.crt"
+            trusted_certificate="/path/to/ca.crt",
         )
 
         params = config.get_connection_params()
 
         self.assertTrue(params["encrypted"])
-        self.assertEqual(
-            params["trust"],
-            "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"
-        )
-        self.assertEqual(
-            params["trusted_certificate"],
-            "/path/to/ca.crt"
-        )
+        self.assertEqual(params["trust"], "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES")
+        self.assertEqual(params["trusted_certificate"], "/path/to/ca.crt")
 
     def test_get_connection_url(self):
         """Test connection URL generation."""
@@ -229,7 +228,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
             port=7687,
             username="user",
             password="pass",
-            database="testdb"
+            database="testdb",
         )
 
         url = config.get_connection_url()
@@ -241,10 +240,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
 
     def test_get_connection_url_no_auth(self):
         """Test connection URL without authentication."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            port=7687
-        )
+        config = Neo4jPoolConfig(host="localhost", port=7687)
 
         url = config.get_connection_url()
 
@@ -252,11 +248,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
 
     def test_get_connection_url_with_ssl(self):
         """Test connection URL with SSL (bolt+s://)."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            port=7687,
-            encrypted=True
-        )
+        config = Neo4jPoolConfig(host="localhost", port=7687, encrypted=True)
 
         url = config.get_connection_url()
 
@@ -264,11 +256,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
 
     def test_get_connection_url_neo4j_scheme(self):
         """Test connection URL with neo4j:// scheme."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            port=7687,
-            use_neo4j_scheme=True
-        )
+        config = Neo4jPoolConfig(host="localhost", port=7687, use_neo4j_scheme=True)
 
         url = config.get_connection_url()
 
@@ -286,11 +274,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
         """Test creating config from URL with extra parameters."""
         url = "bolt://localhost:7687/neo4j"
 
-        config = Neo4jPoolConfig.from_url(
-            url,
-            max_connections=20,
-            min_connections=5
-        )
+        config = Neo4jPoolConfig.from_url(url, max_connections=20, min_connections=5)
 
         self.assertEqual(config.connection_url, url)
         self.assertEqual(config.max_connections, 20)
@@ -354,7 +338,7 @@ class TestNeo4jPoolConfig(unittest.TestCase):
         config = Neo4jPoolConfig(
             connection_url="bolt://user:pass@remote:7688/remotedb",
             host="localhost",  # Should be ignored
-            port=7687  # Should be ignored
+            port=7687,  # Should be ignored
         )
 
         params = config.get_connection_params()
@@ -366,35 +350,23 @@ class TestNeo4jPoolConfig(unittest.TestCase):
         """Test routing context configuration."""
         config = Neo4jPoolConfig(
             host="localhost",
-            routing_context={
-                "address": "localhost:7687",
-                "region": "us-east"
-            }
+            routing_context={"address": "localhost:7687", "region": "us-east"},
         )
 
         params = config.get_connection_params()
         self.assertIn("routing_context", params)
-        self.assertEqual(
-            params["routing_context"]["region"],
-            "us-east"
-        )
+        self.assertEqual(params["routing_context"]["region"], "us-east")
 
     def test_max_transaction_retry_time(self):
         """Test max transaction retry time."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            max_transaction_retry_time=30
-        )
+        config = Neo4jPoolConfig(host="localhost", max_transaction_retry_time=30)
 
         params = config.get_connection_params()
         self.assertEqual(params["max_transaction_retry_time"], 30)
 
     def test_user_agent(self):
         """Test user agent configuration."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            user_agent="MyApp/1.0"
-        )
+        config = Neo4jPoolConfig(host="localhost", user_agent="MyApp/1.0")
 
         params = config.get_connection_params()
         self.assertEqual(params["user_agent"], "MyApp/1.0")
@@ -405,20 +377,14 @@ class TestNeo4jPoolConfigEdgeCases(unittest.TestCase):
 
     def test_special_characters_in_password(self):
         """Test password with special characters."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            password="p@ssw0rd!#$%"
-        )
+        config = Neo4jPoolConfig(host="localhost", password="p@ssw0rd!#$%")
 
         params = config.get_connection_params()
         self.assertEqual(params["auth"][1], "p@ssw0rd!#$%")
 
     def test_ipv6_host(self):
         """Test IPv6 host address."""
-        config = Neo4jPoolConfig(
-            host="::1",
-            port=7687
-        )
+        config = Neo4jPoolConfig(host="::1", port=7687)
 
         self.assertEqual(config.host, "::1")
 
@@ -431,31 +397,19 @@ class TestNeo4jPoolConfigEdgeCases(unittest.TestCase):
 
     def test_max_idle_time_validation(self):
         """Test max_idle_time validation."""
-        with self.assertRaisesRegex(
-            ValueError, "max_idle_time must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_idle_time must be positive"):
             Neo4jPoolConfig(host="localhost", max_idle_time=-1)
 
     def test_max_lifetime_validation(self):
         """Test max_lifetime validation."""
-        with self.assertRaisesRegex(
-            ValueError, "max_lifetime must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_lifetime must be positive"):
             Neo4jPoolConfig(host="localhost", max_lifetime=-1)
 
     def test_bolt_vs_http_scheme(self):
         """Test Bolt vs HTTP scheme."""
-        config_bolt = Neo4jPoolConfig(
-            host="localhost",
-            port=7687,
-            use_bolt=True
-        )
+        config_bolt = Neo4jPoolConfig(host="localhost", port=7687, use_bolt=True)
 
-        config_http = Neo4jPoolConfig(
-            host="localhost",
-            port=7474,
-            use_http=True
-        )
+        config_http = Neo4jPoolConfig(host="localhost", port=7474, use_http=True)
 
         url_bolt = config_bolt.get_connection_url()
         url_http = config_http.get_connection_url()
@@ -468,9 +422,7 @@ class TestNeo4jPoolConfigEdgeCases(unittest.TestCase):
         config = Neo4jPoolConfig(
             host="localhost",
             routing=True,
-            routing_context={
-                "address": "localhost:7687"
-            }
+            routing_context={"address": "localhost:7687"},
         )
 
         params = config.get_connection_params()
@@ -478,38 +430,25 @@ class TestNeo4jPoolConfigEdgeCases(unittest.TestCase):
 
     def test_connection_acquisition_timeout(self):
         """Test connection acquisition timeout."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            connection_acquisition_timeout=60
-        )
+        config = Neo4jPoolConfig(host="localhost", connection_acquisition_timeout=60)
 
         params = config.get_connection_params()
-        self.assertEqual(
-            params["connection_acquisition_timeout"],
-            60
-        )
+        self.assertEqual(params["connection_acquisition_timeout"], 60)
 
     def test_max_connection_lifetime(self):
         """Test max connection lifetime."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            max_connection_lifetime=3600
-        )
+        config = Neo4jPoolConfig(host="localhost", max_connection_lifetime=3600)
 
         params = config.get_connection_params()
         self.assertEqual(params["max_connection_lifetime"], 3600)
 
     def test_keep_alive(self):
         """Test keep alive configuration."""
-        config = Neo4jPoolConfig(
-            host="localhost",
-            keep_alive=True
-        )
+        config = Neo4jPoolConfig(host="localhost", keep_alive=True)
 
         params = config.get_connection_params()
         self.assertTrue(params["keep_alive"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

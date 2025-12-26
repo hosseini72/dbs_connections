@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'postgres' / 'test_postgres_pool_async.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "postgres"
+        / "test_postgres_pool_async.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,40 +30,40 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.postgres.config import (  # noqa: E402
-    PostgresPoolConfig
+    PostgresPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.postgres.pool_async import (  # noqa: E402, E501
-    AsyncPostgresConnectionPool
+    AsyncPostgresConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolTimeoutError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
 class MockAsyncpgTransaction:
     """Mock asyncpg transaction."""
-    
+
     async def __aenter__(self):
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         return False
 
 
 class MockAsyncpgConnection:
     """Mock asyncpg connection for testing."""
-    
+
     def __init__(self):
         self.closed = False
-    
+
     async def fetch(self, query, *args):
         """Mock fetch."""
         return [{"id": 1, "name": "test"}]
-    
+
     async def fetchval(self, query, *args):
         """Mock fetchval."""
         if "SELECT 1" in query:
@@ -65,23 +73,23 @@ class MockAsyncpgConnection:
         elif "count" in query.lower():
             return 5
         return "test_value"
-    
+
     async def fetchrow(self, query, *args):
         """Mock fetchrow."""
         return {"id": 1, "name": "test"}
-    
+
     async def execute(self, query, *args):
         """Mock execute."""
         return "INSERT 0 1"
-    
+
     async def executemany(self, query, args):
         """Mock executemany."""
         pass
-    
+
     async def close(self):
         """Mock close."""
         self.closed = True
-    
+
     def transaction(self):
         """Mock transaction context manager."""
         return MockAsyncpgTransaction()
@@ -143,12 +151,11 @@ class TestAsyncPostgresConnectionPoolInit(unittest.TestCase):
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -179,12 +186,10 @@ class TestAsyncPostgresConnectionPoolInit(unittest.TestCase):
             host="localhost",
             database="test_db",
             user="test_user",
-            max_size=-1  # Invalid
+            max_size=-1,  # Invalid
         )
 
-        with self.assertRaisesRegex(
-            ValueError, "max_size must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_size must be positive"):
             AsyncPostgresConnectionPool(invalid_config)
 
     def test_repr(self):
@@ -198,9 +203,7 @@ class TestAsyncPostgresConnectionPoolInit(unittest.TestCase):
         self.assertIn("test_db", repr_str)
 
 
-class TestAsyncPostgresConnectionPoolInitialization(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolInitialization(unittest.IsolatedAsyncioTestCase):
     """Test async pool initialization."""
 
     def setUp(self):
@@ -215,12 +218,11 @@ class TestAsyncPostgresConnectionPoolInitialization(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -255,6 +257,7 @@ class TestAsyncPostgresConnectionPoolInitialization(
 
     async def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
+
         async def failing_create_pool(**kwargs):
             raise Exception("Connection failed")
 
@@ -267,9 +270,7 @@ class TestAsyncPostgresConnectionPoolInitialization(
 
             pool = AsyncPostgresConnectionPool(self.postgres_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 await pool.initialize_pool()
 
     async def test_lazy_initialization(self):
@@ -285,9 +286,7 @@ class TestAsyncPostgresConnectionPoolInitialization(
         self.assertTrue(pool._initialized)
 
 
-class TestAsyncPostgresConnectionPoolGetConnection(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolGetConnection(unittest.IsolatedAsyncioTestCase):
     """Test async connection acquisition."""
 
     def setUp(self):
@@ -302,13 +301,12 @@ class TestAsyncPostgresConnectionPoolGetConnection(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
         self.mock_asyncpg_connection = MockAsyncpgConnection()
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -350,14 +348,12 @@ class TestAsyncPostgresConnectionPoolGetConnection(
             database="test_db",
             user="test_user",
             validate_on_checkout=True,
-            pre_ping=True
+            pre_ping=True,
         )
 
         pool = AsyncPostgresConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -381,9 +377,7 @@ class TestAsyncPostgresConnectionPoolGetConnection(
             conn_id = id(conn)
             async with pool._get_metadata_lock():
                 self.assertIn(conn_id, pool._connection_metadata)
-                self.assertTrue(
-                    pool._connection_metadata[conn_id].in_use
-                )
+                self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     async def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -399,6 +393,7 @@ class TestAsyncPostgresConnectionPoolGetConnection(
 
     async def test_get_connection_timeout(self):
         """Test connection acquisition timeout."""
+
         async def timeout_acquire(timeout=None):
             raise asyncio.TimeoutError("Timeout")
 
@@ -425,9 +420,7 @@ class TestAsyncPostgresConnectionPoolGetConnection(
                     pass
 
 
-class TestAsyncPostgresConnectionPoolRelease(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolRelease(unittest.IsolatedAsyncioTestCase):
     """Test async connection release."""
 
     def setUp(self):
@@ -442,13 +435,12 @@ class TestAsyncPostgresConnectionPoolRelease(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
         self.mock_asyncpg_connection = MockAsyncpgConnection()
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -478,9 +470,7 @@ class TestAsyncPostgresConnectionPoolRelease(
         self.assertNotIn(conn_id, pool._connections_in_use)
 
 
-class TestAsyncPostgresConnectionPoolClose(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolClose(unittest.IsolatedAsyncioTestCase):
     """Test async pool closing."""
 
     def setUp(self):
@@ -495,13 +485,12 @@ class TestAsyncPostgresConnectionPoolClose(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
         self.mock_asyncpg_connection = MockAsyncpgConnection()
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -525,7 +514,7 @@ class TestAsyncPostgresConnectionPoolClose(
         conn = self.mock_asyncpg_connection
         conn_id = id(conn)
         pool._connections_in_use.add(conn_id)
-        
+
         # Ensure pool.release is awaitable
         pool._pool.release = AsyncMock()
 
@@ -547,9 +536,7 @@ class TestAsyncPostgresConnectionPoolClose(
         self.assertEqual(len(pool._connections_in_use), 0)
 
 
-class TestAsyncPostgresConnectionPoolStatus(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolStatus(unittest.IsolatedAsyncioTestCase):
     """Test async pool status and metrics."""
 
     def setUp(self):
@@ -564,12 +551,11 @@ class TestAsyncPostgresConnectionPoolStatus(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -593,10 +579,7 @@ class TestAsyncPostgresConnectionPoolStatus(
 
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
-        expected_max = (
-            self.postgres_config.max_size +
-            self.postgres_config.max_overflow
-        )
+        expected_max = self.postgres_config.max_size + self.postgres_config.max_overflow
         self.assertEqual(status["max_connections"], expected_max)
 
     async def test_pool_status_initialized(self):
@@ -609,14 +592,9 @@ class TestAsyncPostgresConnectionPoolStatus(
 
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
-        expected_max = (
-            self.postgres_config.max_size +
-            self.postgres_config.max_overflow
-        )
+        expected_max = self.postgres_config.max_size + self.postgres_config.max_overflow
         self.assertEqual(status["max_connections"], expected_max)
-        self.assertEqual(
-            status["min_connections"], self.postgres_config.min_size
-        )
+        self.assertEqual(status["min_connections"], self.postgres_config.min_size)
 
     async def test_get_metrics(self):
         """Test getting pool metrics."""
@@ -629,19 +607,12 @@ class TestAsyncPostgresConnectionPoolStatus(
         self.assertGreaterEqual(metrics.total_connections, 0)
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
-        expected_max = (
-            self.postgres_config.max_size +
-            self.postgres_config.max_overflow
-        )
+        expected_max = self.postgres_config.max_size + self.postgres_config.max_overflow
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.postgres_config.min_size
-        )
+        self.assertEqual(metrics.min_connections, self.postgres_config.min_size)
 
 
-class TestAsyncPostgresConnectionPoolValidation(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolValidation(unittest.IsolatedAsyncioTestCase):
     """Test async connection validation."""
 
     def setUp(self):
@@ -656,13 +627,12 @@ class TestAsyncPostgresConnectionPoolValidation(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
         self.mock_asyncpg_connection = MockAsyncpgConnection()
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -682,9 +652,7 @@ class TestAsyncPostgresConnectionPoolValidation(
         self._setup_mock_asyncpg_module()
         pool = AsyncPostgresConnectionPool(self.postgres_config)
 
-        result = await pool.validate_connection(
-            self.mock_asyncpg_connection
-        )
+        result = await pool.validate_connection(self.mock_asyncpg_connection)
 
         self.assertTrue(result)
 
@@ -695,18 +663,14 @@ class TestAsyncPostgresConnectionPoolValidation(
 
         # Create connection that will fail validation
         bad_conn = Mock()
-        bad_conn.fetchval = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
+        bad_conn.fetchval = AsyncMock(side_effect=Exception("Connection lost"))
 
         result = await pool.validate_connection(bad_conn)
 
         self.assertFalse(result)
 
 
-class TestAsyncPostgresConnectionPoolHealth(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolHealth(unittest.IsolatedAsyncioTestCase):
     """Test async health checks."""
 
     def setUp(self):
@@ -721,13 +685,12 @@ class TestAsyncPostgresConnectionPoolHealth(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
         self.mock_asyncpg_connection = MockAsyncpgConnection()
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -764,9 +727,7 @@ class TestAsyncPostgresConnectionPoolHealth(
 
         health = await pool.health_check()
 
-        self.assertIn(
-            health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
     async def test_database_health_check(self):
         """Test database health check."""
@@ -778,18 +739,12 @@ class TestAsyncPostgresConnectionPoolHealth(
 
         self.assertIn(
             health.state,
-            [
-                HealthState.HEALTHY,
-                HealthState.DEGRADED,
-                HealthState.UNHEALTHY
-            ]
+            [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
         )
         self.assertIsNotNone(health.response_time_ms)
 
 
-class TestAsyncPostgresConnectionPoolContextManager(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolContextManager(unittest.IsolatedAsyncioTestCase):
     """Test async context manager support."""
 
     def setUp(self):
@@ -804,12 +759,11 @@ class TestAsyncPostgresConnectionPoolContextManager(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -827,9 +781,7 @@ class TestAsyncPostgresConnectionPoolContextManager(
     async def test_context_manager_enter(self):
         """Test pool async context manager enter."""
         self._setup_mock_asyncpg_module()
-        async with AsyncPostgresConnectionPool(
-            self.postgres_config
-        ) as pool:
+        async with AsyncPostgresConnectionPool(self.postgres_config) as pool:
             self.assertTrue(pool._initialized)
             self.assertFalse(pool._closed)
 
@@ -846,18 +798,14 @@ class TestAsyncPostgresConnectionPoolContextManager(
     async def test_context_manager_with_connections(self):
         """Test using connections within async context manager."""
         self._setup_mock_asyncpg_module()
-        async with AsyncPostgresConnectionPool(
-            self.postgres_config
-        ) as pool:
+        async with AsyncPostgresConnectionPool(self.postgres_config) as pool:
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
         self.assertTrue(pool._closed)
 
 
-class TestAsyncPostgresConnectionPoolConcurrency(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolConcurrency(unittest.IsolatedAsyncioTestCase):
     """Test concurrent async operations."""
 
     def setUp(self):
@@ -872,13 +820,12 @@ class TestAsyncPostgresConnectionPoolConcurrency(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
         self.mock_asyncpg_connection = MockAsyncpgConnection()
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -930,9 +877,7 @@ class TestAsyncPostgresConnectionPoolConcurrency(
         self.assertIsNotNone(conn_id_2)
 
 
-class TestAsyncPostgresConnectionPoolRetry(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolRetry(unittest.IsolatedAsyncioTestCase):
     """Test async retry logic."""
 
     def setUp(self):
@@ -951,24 +896,26 @@ class TestAsyncPostgresConnectionPoolRetry(
     async def test_retry_on_connection_failure(self):
         """Test retry logic on connection failure."""
         attempt_count = 0
-        
+
         async def acquire_with_retries(timeout=None):
             nonlocal attempt_count
             attempt_count += 1
             if attempt_count < 3:
                 raise Exception("Connection failed")
             return MockAsyncpgConnection()
-        
+
         mock_pool = MagicMock()
         mock_pool.acquire = AsyncMock(side_effect=acquire_with_retries)
         mock_pool.release = AsyncMock()  # Make release awaitable
-        
+
         async def create_pool_mock(**kwargs):
             return mock_pool
-        
-        with patch("db_connections.scr.all_db_connectors.connectors.postgres.pool_async.asyncpg") as mock_module:
+
+        with patch(
+            "db_connections.scr.all_db_connectors.connectors.postgres.pool_async.asyncpg"
+        ) as mock_module:
             mock_module.create_pool = create_pool_mock
-            
+
             config = PostgresPoolConfig(
                 host="localhost",
                 database="test_db",
@@ -976,22 +923,20 @@ class TestAsyncPostgresConnectionPoolRetry(
                 max_retries=3,
                 retry_delay=0.1,
                 pre_ping=False,
-                validate_on_checkout=False
+                validate_on_checkout=False,
             )
-            
+
             pool = AsyncPostgresConnectionPool(config)
             await pool.initialize_pool()
-            
+
             # Should succeed after retries
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
-            
+
             self.assertEqual(attempt_count, 3)
 
 
-class TestAsyncPostgresConnectionPoolTransactions(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolTransactions(unittest.IsolatedAsyncioTestCase):
     """Test transaction support."""
 
     def setUp(self):
@@ -1006,13 +951,12 @@ class TestAsyncPostgresConnectionPoolTransactions(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
         self.mock_asyncpg_connection = MockAsyncpgConnection()
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -1040,9 +984,7 @@ class TestAsyncPostgresConnectionPoolTransactions(
                 self.assertEqual(result, 1)
 
 
-class TestAsyncPostgresConnectionPoolQueries(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncPostgresConnectionPoolQueries(unittest.IsolatedAsyncioTestCase):
     """Test query execution."""
 
     def setUp(self):
@@ -1057,13 +999,12 @@ class TestAsyncPostgresConnectionPoolQueries(
             max_size=10,
             timeout=30,
         )
-        self.mock_asyncpg_pool = MockAsyncpgPool(
-            min_size=2, max_size=10
-        )
+        self.mock_asyncpg_pool = MockAsyncpgPool(min_size=2, max_size=10)
         self.mock_asyncpg_connection = MockAsyncpgConnection()
 
     def _setup_mock_asyncpg_module(self):
         """Set up mock asyncpg module."""
+
         async def create_pool_mock(**kwargs):
             return self.mock_asyncpg_pool
 
@@ -1105,12 +1046,9 @@ class TestAsyncPostgresConnectionPoolQueries(
         await pool.initialize_pool()
 
         async with pool.get_connection() as conn:
-            result = await conn.execute(
-                "INSERT INTO users (name) VALUES ($1)",
-                "test"
-            )
+            result = await conn.execute("INSERT INTO users (name) VALUES ($1)", "test")
             self.assertIsNotNone(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

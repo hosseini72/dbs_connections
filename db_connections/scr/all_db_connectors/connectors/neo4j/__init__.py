@@ -11,6 +11,7 @@ from .health import Neo4jHealthChecker
 # Import sync pool
 try:
     from .pool import Neo4jSyncConnectionPool
+
     SYNC_AVAILABLE = True
 except ImportError:
     SYNC_AVAILABLE = False
@@ -19,6 +20,7 @@ except ImportError:
 # Import async pool (for now it's in pool.py but not fully implemented)
 try:
     from .pool import Neo4jAsyncConnectionPool
+
     ASYNC_AVAILABLE = True
 except (ImportError, NotImplementedError):
     ASYNC_AVAILABLE = False

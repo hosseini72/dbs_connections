@@ -305,4 +305,3 @@ class RabbitMQPoolConfig(BasePoolConfig):
             ssl=os.getenv(f"{prefix}SSL", "false").lower() == "true",
             heartbeat=int(os.getenv(f"{prefix}HEARTBEAT", "600")),
         )
-

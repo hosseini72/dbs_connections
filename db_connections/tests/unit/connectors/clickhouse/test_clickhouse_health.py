@@ -15,7 +15,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'clickhouse' / 'test_clickhouse_health.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "clickhouse"
+        / "test_clickhouse_health.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -23,13 +31,14 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.clickhouse.config import (  # noqa: E402, E501
-    ClickHousePoolConfig
+    ClickHousePoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.clickhouse.health import (  # noqa: E402
     ClickHouseHealthChecker,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState, HealthStatus
+    HealthState,
+    HealthStatus,
 )
 
 
@@ -45,7 +54,7 @@ class MockClickHouseConnection:
             "version_minor": 1,
             "revision": 54463,
             "name": "ClickHouse",
-            "version_display": "23.1.54463"
+            "version_display": "23.1.54463",
         }
 
     def ping(self):
@@ -85,11 +94,7 @@ class MockAsyncClickHouseConnection:
         self.closed = False
         self.healthy = healthy
         self.connected = True
-        self.server_info = {
-            "version_major": 23,
-            "version_minor": 1,
-            "revision": 54463
-        }
+        self.server_info = {"version_major": 23, "version_minor": 1, "revision": 54463}
 
     async def ping(self):
         """Mock ping."""
@@ -146,15 +151,11 @@ class TestClickHouseHealthCheckerConnection(unittest.TestCase):
             port=9000,
         )
         self.health_checker = ClickHouseHealthChecker(self.clickhouse_config)
-        self.mock_clickhouse_connection = MockClickHouseConnection(
-            healthy=True
-        )
+        self.mock_clickhouse_connection = MockClickHouseConnection(healthy=True)
 
     def test_check_health_healthy(self):
         """Test health check on healthy connection."""
-        result = self.health_checker.check_connection(
-            self.mock_clickhouse_connection
-        )
+        result = self.health_checker.check_connection(self.mock_clickhouse_connection)
 
         self.assertIsInstance(result, HealthStatus)
         self.assertEqual(result.state, HealthState.HEALTHY)
@@ -190,7 +191,7 @@ class TestClickHouseHealthCheckerConnection(unittest.TestCase):
         # Simulate slow response by patching time
         # The health checker doesn't check response time for degradation,
         # it only checks if ping succeeds or fails
-        with patch('time.time', side_effect=[0, 1.5]):  # 1.5 second delay
+        with patch("time.time", side_effect=[0, 1.5]):  # 1.5 second delay
             result = self.health_checker.check_connection(conn)
 
         # Should still be healthy if ping succeeds, even if slow
@@ -366,17 +367,16 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
         """Test that response time is recorded."""
         # Add a small delay to ensure response time is > 0
         import time
+
         original_ping = self.mock_clickhouse_connection.ping
-        
+
         def delayed_ping():
             time.sleep(0.001)  # 1ms delay
             return original_ping()
-        
+
         self.mock_clickhouse_connection.ping = delayed_ping
-        
-        result = self.health_checker.check_connection(
-            self.mock_clickhouse_connection
-        )
+
+        result = self.health_checker.check_connection(self.mock_clickhouse_connection)
 
         self.assertIsNotNone(result.response_time_ms)
         self.assertGreaterEqual(result.response_time_ms, 0)
@@ -408,10 +408,10 @@ class TestClickHouseHealthCheckerComprehensive(unittest.TestCase):
         # comprehensive_check requires a pool instance
         # Create a mock pool for testing
         from db_connections.scr.all_db_connectors.connectors.clickhouse.pool import (
-            ClickHouseSyncConnectionPool
+            ClickHouseSyncConnectionPool,
         )
         from unittest.mock import patch
-        
+
         with patch(
             "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.clickhouse_connect"
         ) as mock_module:
@@ -419,11 +419,11 @@ class TestClickHouseHealthCheckerComprehensive(unittest.TestCase):
             # Also patch SYNC_AVAILABLE
             with patch(
                 "db_connections.scr.all_db_connectors.connectors.clickhouse.pool.SYNC_AVAILABLE",
-                True
+                True,
             ):
                 pool = ClickHouseSyncConnectionPool(self.clickhouse_config)
                 pool.initialize_pool()
-                
+
                 # Create health checker with pool
                 health_checker = ClickHouseHealthChecker(pool)
                 result = health_checker.comprehensive_check()
@@ -438,6 +438,5 @@ class TestClickHouseHealthCheckerComprehensive(unittest.TestCase):
                 self.assertIsInstance(result["timestamp"], datetime)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

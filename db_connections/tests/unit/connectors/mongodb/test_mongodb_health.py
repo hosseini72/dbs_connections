@@ -15,7 +15,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'mongodb' / 'test_mongodb_health.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "mongodb"
+        / "test_mongodb_health.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -23,13 +31,14 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.mongodb.config import (  # noqa: E402, E501
-    MongoPoolConfig
+    MongoPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.mongodb.health import (  # noqa: E402
     MongoHealthChecker,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState, HealthStatus
+    HealthState,
+    HealthStatus,
 )
 
 
@@ -46,38 +55,24 @@ class MockMongoClient:
             "version": "6.0.0",
             "uptime": 3600,
             "uptimeMillis": 3600000,
-            "connections": {
-                "current": 10,
-                "available": 990,
-                "totalCreated": 1000
-            },
-            "network": {
-                "bytesIn": 1024000,
-                "bytesOut": 2048000,
-                "numRequests": 5000
-            },
+            "connections": {"current": 10, "available": 990, "totalCreated": 1000},
+            "network": {"bytesIn": 1024000, "bytesOut": 2048000, "numRequests": 5000},
             "opcounters": {
                 "insert": 100,
                 "query": 500,
                 "update": 50,
                 "delete": 10,
                 "getmore": 20,
-                "command": 200
+                "command": 200,
             },
             "repl": {
                 "setName": "rs0",
                 "ismaster": True,
                 "secondary": False,
-                "primary": "localhost:27017"
+                "primary": "localhost:27017",
             },
-            "storageEngine": {
-                "name": "wiredTiger"
-            },
-            "mem": {
-                "resident": 512,
-                "virtual": 1024,
-                "mapped": 256
-            }
+            "storageEngine": {"name": "wiredTiger"},
+            "mem": {"resident": 512, "virtual": 1024, "mapped": 256},
         }
 
     def ping(self):
@@ -111,7 +106,7 @@ class MockMongoDatabase:
         """Mock command."""
         if not self.healthy:
             raise Exception("Connection lost")
-        
+
         if command == "ping":
             return {"ok": 1}
         elif command == "serverStatus":
@@ -121,12 +116,8 @@ class MockMongoDatabase:
                 "ok": 1,
                 "set": "rs0",
                 "members": [
-                    {
-                        "name": "localhost:27017",
-                        "stateStr": "PRIMARY",
-                        "health": 1
-                    }
-                ]
+                    {"name": "localhost:27017", "stateStr": "PRIMARY", "health": 1}
+                ],
             }
         elif command == "dbStats":
             return {
@@ -137,7 +128,7 @@ class MockMongoDatabase:
                 "dataSize": 1024000,
                 "storageSize": 2048000,
                 "indexes": 10,
-                "indexSize": 512000
+                "indexSize": 512000,
             }
         return {"ok": 1}
 
@@ -154,10 +145,7 @@ class MockAsyncMongoClient:
             "ok": 1,
             "version": "6.0.0",
             "uptime": 3600,
-            "connections": {
-                "current": 10,
-                "available": 990
-            }
+            "connections": {"current": 10, "available": 990},
         }
 
     async def ping(self):
@@ -191,7 +179,7 @@ class MockAsyncMongoDatabase:
         """Mock command."""
         if not self.healthy:
             raise Exception("Connection lost")
-        
+
         if command == "ping":
             return {"ok": 1}
         elif command == "serverStatus":
@@ -232,9 +220,7 @@ class TestMongoHealthCheckerConnection(unittest.TestCase):
 
     def test_check_health_healthy(self):
         """Test health check on healthy connection."""
-        result = self.health_checker.check_health(
-            self.mock_mongo_client
-        )
+        result = self.health_checker.check_health(self.mock_mongo_client)
 
         self.assertIsInstance(result, HealthStatus)
         self.assertEqual(result.state, HealthState.HEALTHY)
@@ -256,33 +242,25 @@ class TestMongoHealthCheckerConnection(unittest.TestCase):
     def test_check_health_with_high_connections(self):
         """Test health check with high connection count."""
         client = MockMongoClient()
-        client.set_server_status("connections", {
-            "current": 950,
-            "available": 50,
-            "totalCreated": 10000
-        })
+        client.set_server_status(
+            "connections", {"current": 950, "available": 50, "totalCreated": 10000}
+        )
 
         result = self.health_checker.check_health(client)
 
         # Should be degraded or unhealthy due to high connections
-        self.assertIn(
-            result.state,
-            [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(result.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
     def test_check_health_with_slow_response(self):
         """Test health check with slow response."""
         client = MockMongoClient()
 
         # Simulate slow response by patching time
-        with patch('time.time', side_effect=[0, 1.5]):  # 1.5 second delay
+        with patch("time.time", side_effect=[0, 1.5]):  # 1.5 second delay
             result = self.health_checker.check_health(client)
 
         # Should be degraded or unhealthy due to slow response
-        self.assertIn(
-            result.state,
-            [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(result.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
 
 class TestMongoHealthCheckerReplication(unittest.TestCase):
@@ -300,12 +278,15 @@ class TestMongoHealthCheckerReplication(unittest.TestCase):
     def test_check_replication_status_primary(self):
         """Test replication status check on primary."""
         client = MockMongoClient()
-        client.set_server_status("repl", {
-            "setName": "rs0",
-            "ismaster": True,
-            "secondary": False,
-            "primary": "localhost:27017"
-        })
+        client.set_server_status(
+            "repl",
+            {
+                "setName": "rs0",
+                "ismaster": True,
+                "secondary": False,
+                "primary": "localhost:27017",
+            },
+        )
 
         status = self.health_checker.check_replication_status(client)
 
@@ -316,12 +297,15 @@ class TestMongoHealthCheckerReplication(unittest.TestCase):
     def test_check_replication_status_secondary(self):
         """Test replication status check on secondary."""
         client = MockMongoClient()
-        client.set_server_status("repl", {
-            "setName": "rs0",
-            "ismaster": False,
-            "secondary": True,
-            "primary": "other:27017"
-        })
+        client.set_server_status(
+            "repl",
+            {
+                "setName": "rs0",
+                "ismaster": False,
+                "secondary": True,
+                "primary": "other:27017",
+            },
+        )
 
         status = self.health_checker.check_replication_status(client)
 
@@ -497,9 +481,7 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
 
     def test_response_time_recorded(self):
         """Test that response time is recorded."""
-        result = self.health_checker.check_health(
-            self.mock_mongo_client
-        )
+        result = self.health_checker.check_health(self.mock_mongo_client)
 
         self.assertIsNotNone(result.response_time_ms)
         self.assertGreater(result.response_time_ms, 0)
@@ -528,9 +510,7 @@ class TestMongoHealthCheckerComprehensive(unittest.TestCase):
 
     def test_comprehensive_check(self):
         """Test comprehensive health check."""
-        result = self.health_checker.comprehensive_check(
-            self.mock_mongo_client
-        )
+        result = self.health_checker.comprehensive_check(self.mock_mongo_client)
 
         self.assertIsInstance(result, dict)
         self.assertIn("connection", result)
@@ -542,6 +522,5 @@ class TestMongoHealthCheckerComprehensive(unittest.TestCase):
         self.assertIsInstance(result["timestamp"], datetime)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

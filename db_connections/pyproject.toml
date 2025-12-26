@@ -20,12 +20,6 @@ authors = [
 ]
 license = {text = "MIT"}
 license-files = ["LICENSE", "LICENCE"]
-project-urls = {
-    "Homepage" = "https://github.com/hosseini72/dbs_connections",
-    "Documentation" = "https://github.com/hosseini72/dbs_connections#readme",
-    "Repository" = "https://github.com/hosseini72/dbs_connections",
-    "Issues" = "https://github.com/hosseini72/dbs_connections/issues",
-}
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -58,6 +52,13 @@ keywords = [
     "health-check",
     "metrics",
 ]
+
+[project.urls]
+Homepage = "https://github.com/hosseini72/dbs_connections"
+Documentation = "https://github.com/hosseini72/dbs_connections#readme"
+Repository = "https://github.com/hosseini72/dbs_connections"
+Issues = "https://github.com/hosseini72/dbs_connections/issues"
+
 [project.optional-dependencies]
 # PostgreSQL
 postgres-sync = [

@@ -15,7 +15,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'neo4j' / 'test_neo4j_health.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "neo4j"
+        / "test_neo4j_health.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -23,13 +31,14 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.neo4j.config import (  # noqa: E402, E501
-    Neo4jPoolConfig
+    Neo4jPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.neo4j.health import (  # noqa: E402
     Neo4jHealthChecker,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState, HealthStatus
+    HealthState,
+    HealthStatus,
 )
 
 
@@ -73,11 +82,15 @@ class MockNeo4jSession:
         if "RETURN 1" in query:
             return MockNeo4jResult([{"1": 1}])
         elif "CALL dbms.components()" in query:
-            return MockNeo4jResult([{
-                "name": "Neo4j Kernel",
-                "versions": ["5.0.0"],
-                "edition": "community"
-            }])
+            return MockNeo4jResult(
+                [
+                    {
+                        "name": "Neo4j Kernel",
+                        "versions": ["5.0.0"],
+                        "edition": "community",
+                    }
+                ]
+            )
         return MockNeo4jResult([])
 
     def close(self):
@@ -220,9 +233,7 @@ class TestNeo4jHealthCheckerConnection(unittest.TestCase):
 
     def test_check_health_healthy(self):
         """Test health check on healthy connection."""
-        result = self.health_checker.check_health(
-            self.mock_neo4j_driver
-        )
+        result = self.health_checker.check_health(self.mock_neo4j_driver)
 
         self.assertIsInstance(result, HealthStatus)
         self.assertEqual(result.state, HealthState.HEALTHY)
@@ -256,14 +267,11 @@ class TestNeo4jHealthCheckerConnection(unittest.TestCase):
         driver = MockNeo4jDriver()
 
         # Simulate slow response by patching time
-        with patch('time.time', side_effect=[0, 1.5]):  # 1.5 second delay
+        with patch("time.time", side_effect=[0, 1.5]):  # 1.5 second delay
             result = self.health_checker.check_health(driver)
 
         # Should be degraded or unhealthy due to slow response
-        self.assertIn(
-            result.state,
-            [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(result.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
 
 class TestNeo4jHealthCheckerServerInfo(unittest.TestCase):
@@ -451,9 +459,7 @@ class TestHealthCheckerResponseTime(unittest.TestCase):
 
     def test_response_time_recorded(self):
         """Test that response time is recorded."""
-        result = self.health_checker.check_health(
-            self.mock_neo4j_driver
-        )
+        result = self.health_checker.check_health(self.mock_neo4j_driver)
 
         self.assertIsNotNone(result.response_time_ms)
         self.assertGreater(result.response_time_ms, 0)
@@ -482,9 +488,7 @@ class TestNeo4jHealthCheckerComprehensive(unittest.TestCase):
 
     def test_comprehensive_check(self):
         """Test comprehensive health check."""
-        result = self.health_checker.comprehensive_check(
-            self.mock_neo4j_driver
-        )
+        result = self.health_checker.comprehensive_check(self.mock_neo4j_driver)
 
         self.assertIsInstance(result, dict)
         self.assertIn("connection", result)
@@ -495,6 +499,5 @@ class TestNeo4jHealthCheckerComprehensive(unittest.TestCase):
         self.assertIsInstance(result["timestamp"], datetime)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

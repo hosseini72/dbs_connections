@@ -13,7 +13,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'redis' / 'test_redis_config.py'
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "redis"
+        / "test_redis_config.py"
+    )
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -21,19 +29,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.redis.config import (  # noqa: E402, E501
-    RedisPoolConfig
+    RedisPoolConfig,
 )
 
 
 class TestRedisPoolConfig(unittest.TestCase):
     """Test RedisPoolConfig class."""
-    
+
     def test_default_values(self):
         """Test default configuration values."""
-        config = RedisPoolConfig(
-            host="localhost"
-        )
-        
+        config = RedisPoolConfig(host="localhost")
+
         self.assertEqual(config.host, "localhost")
         self.assertEqual(config.port, 6379)
         self.assertIsNone(config.password)
@@ -41,7 +47,7 @@ class TestRedisPoolConfig(unittest.TestCase):
         self.assertEqual(config.timeout, 10)
         self.assertEqual(config.max_connections, 10)
         self.assertEqual(config.min_connections, 1)
-    
+
     def test_custom_values(self):
         """Test custom configuration values."""
         config = RedisPoolConfig(
@@ -53,9 +59,9 @@ class TestRedisPoolConfig(unittest.TestCase):
             max_connections=20,
             min_connections=5,
             max_idle_time=120,
-            max_lifetime=7200
+            max_lifetime=7200,
         )
-        
+
         self.assertEqual(config.host, "redis.example.com")
         self.assertEqual(config.port, 6380)
         self.assertEqual(config.password, "secret")
@@ -65,55 +71,51 @@ class TestRedisPoolConfig(unittest.TestCase):
         self.assertEqual(config.min_connections, 5)
         self.assertEqual(config.max_idle_time, 120)
         self.assertEqual(config.max_lifetime, 7200)
-    
+
     def test_missing_required_fields(self):
         """Test validation of required fields."""
         with self.assertRaisesRegex(ValueError, "host is required"):
             RedisPoolConfig(host="")
-        
+
         with self.assertRaisesRegex(ValueError, "host is required"):
             RedisPoolConfig(host=None)
-    
+
     def test_invalid_port(self):
         """Test validation of port."""
         with self.assertRaisesRegex(ValueError, "port must be between"):
             RedisPoolConfig(host="localhost", port=0)
-        
+
         with self.assertRaisesRegex(ValueError, "port must be between"):
             RedisPoolConfig(host="localhost", port=65536)
-    
+
     def test_invalid_db(self):
         """Test validation of database number."""
         with self.assertRaisesRegex(ValueError, "db must be between"):
             RedisPoolConfig(host="localhost", db=-1)
-        
+
         with self.assertRaisesRegex(ValueError, "db must be between"):
             RedisPoolConfig(host="localhost", db=16)
-    
+
     def test_invalid_timeout(self):
         """Test validation of timeout."""
         with self.assertRaisesRegex(ValueError, "timeout must be positive"):
             RedisPoolConfig(host="localhost", timeout=-1)
-    
+
     def test_invalid_max_connections(self):
         """Test validation of max_connections."""
         with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             RedisPoolConfig(host="localhost", max_connections=0)
-    
+
     def test_invalid_min_connections(self):
         """Test validation of min_connections."""
         with self.assertRaisesRegex(ValueError, "min_connections must be positive"):
             RedisPoolConfig(host="localhost", min_connections=0)
-    
+
     def test_min_greater_than_max(self):
         """Test validation that min_connections <= max_connections."""
         with self.assertRaisesRegex(ValueError, "min_connections cannot be greater"):
-            RedisPoolConfig(
-                host="localhost",
-                min_connections=20,
-                max_connections=10
-            )
-    
+            RedisPoolConfig(host="localhost", min_connections=20, max_connections=10)
+
     def test_get_connection_params(self):
         """Test connection parameters generation."""
         config = RedisPoolConfig(
@@ -123,104 +125,85 @@ class TestRedisPoolConfig(unittest.TestCase):
             db=1,
             timeout=15,
             socket_timeout=5,
-            socket_connect_timeout=3
+            socket_connect_timeout=3,
         )
-        
+
         params = config.get_connection_params()
-        
+
         self.assertEqual(params["host"], "localhost")
         self.assertEqual(params["port"], 6379)
         self.assertEqual(params["password"], "testpass")
         self.assertEqual(params["db"], 1)
         self.assertEqual(params["socket_timeout"], 5)
         self.assertEqual(params["socket_connect_timeout"], 3)
-    
+
     def test_get_connection_params_no_password(self):
         """Test connection parameters without password."""
-        config = RedisPoolConfig(
-            host="localhost",
-            port=6379
-        )
-        
+        config = RedisPoolConfig(host="localhost", port=6379)
+
         params = config.get_connection_params()
-        
+
         self.assertNotIn("password", params)
-    
+
     def test_get_connection_params_with_ssl(self):
         """Test connection parameters with SSL."""
         config = RedisPoolConfig(
             host="localhost",
             ssl=True,
             ssl_cert_reqs="required",
-            ssl_ca_certs="/path/to/ca.crt"
+            ssl_ca_certs="/path/to/ca.crt",
         )
-        
+
         params = config.get_connection_params()
-        
+
         self.assertTrue(params["ssl"])
         self.assertEqual(params["ssl_cert_reqs"], "required")
         self.assertEqual(params["ssl_ca_certs"], "/path/to/ca.crt")
-    
+
     def test_get_connection_url(self):
         """Test connection URL generation."""
-        config = RedisPoolConfig(
-            host="localhost",
-            port=6379,
-            password="testpass",
-            db=1
-        )
-        
+        config = RedisPoolConfig(host="localhost", port=6379, password="testpass", db=1)
+
         url = config.get_connection_url()
-        
+
         self.assertTrue(url.startswith("redis://"))
         self.assertIn("localhost:6379", url)
         self.assertIn("/1", url)
-    
+
     def test_get_connection_url_no_password(self):
         """Test connection URL without password."""
-        config = RedisPoolConfig(
-            host="localhost",
-            port=6379
-        )
-        
+        config = RedisPoolConfig(host="localhost", port=6379)
+
         url = config.get_connection_url()
-        
+
         self.assertEqual(url, "redis://localhost:6379/0")
-    
+
     def test_get_connection_url_with_ssl(self):
         """Test connection URL with SSL (rediss://)."""
-        config = RedisPoolConfig(
-            host="localhost",
-            port=6379,
-            ssl=True
-        )
-        
+        config = RedisPoolConfig(host="localhost", port=6379, ssl=True)
+
         url = config.get_connection_url()
-        
+
         self.assertTrue(url.startswith("rediss://"))
-    
+
     def test_from_url(self):
         """Test creating config from URL."""
         url = "redis://user:pass@localhost:6379/1"
-        
+
         config = RedisPoolConfig.from_url(url)
-        
+
         self.assertEqual(config.connection_url, url)
-    
+
     def test_from_url_with_additional_params(self):
         """Test creating config from URL with extra parameters."""
         url = "redis://localhost:6379/0"
-        
-        config = RedisPoolConfig.from_url(
-            url,
-            max_connections=20,
-            min_connections=5
-        )
-        
+
+        config = RedisPoolConfig.from_url(url, max_connections=20, min_connections=5)
+
         self.assertEqual(config.connection_url, url)
         self.assertEqual(config.max_connections, 20)
         self.assertEqual(config.min_connections, 5)
-    
+
     def test_from_env(self):
         """Test creating config from environment variables."""
         # Set environment variables
@@ -228,10 +211,10 @@ class TestRedisPoolConfig(unittest.TestCase):
         os.environ["REDIS_PORT"] = "6380"
         os.environ["REDIS_PASSWORD"] = "envpass"
         os.environ["REDIS_DB"] = "2"
-        
+
         try:
             config = RedisPoolConfig.from_env()
-            
+
             self.assertEqual(config.host, "envhost")
             self.assertEqual(config.port, 6380)
             self.assertEqual(config.password, "envpass")
@@ -241,17 +224,17 @@ class TestRedisPoolConfig(unittest.TestCase):
             keys = ["HOST", "PORT", "PASSWORD", "DB"]
             for key in keys:
                 os.environ.pop(f"REDIS_{key}", None)
-    
+
     def test_from_env_custom_prefix(self):
         """Test creating config from environment with custom prefix."""
         # Set environment variables
         os.environ["CACHE_HOST"] = "customhost"
         os.environ["CACHE_PORT"] = "6381"
         os.environ["CACHE_DB"] = "3"
-        
+
         try:
             config = RedisPoolConfig.from_env(prefix="CACHE_")
-            
+
             self.assertEqual(config.host, "customhost")
             self.assertEqual(config.port, 6381)
             self.assertEqual(config.db, 3)
@@ -259,112 +242,94 @@ class TestRedisPoolConfig(unittest.TestCase):
             # Cleanup
             for key in ["HOST", "PORT", "DB"]:
                 os.environ.pop(f"CACHE_{key}", None)
-    
+
     def test_from_env_defaults(self):
         """Test from_env uses defaults for missing vars."""
         # Make sure env vars don't exist
         for key in ["HOST", "PORT", "DB"]:
             os.environ.pop(f"TEST_REDIS_{key}", None)
-        
+
         config = RedisPoolConfig.from_env(prefix="TEST_REDIS_")
-        
+
         self.assertEqual(config.host, "localhost")
         self.assertEqual(config.port, 6379)
         self.assertEqual(config.db, 0)
-    
+
     def test_connection_url_overrides(self):
         """Test that connection_url overrides individual params."""
         config = RedisPoolConfig(
             connection_url="redis://user:pass@remote:6380/2",
             host="localhost",  # Should be ignored
-            port=6379  # Should be ignored
+            port=6379,  # Should be ignored
         )
-        
+
         params = config.get_connection_params()
-        
+
         self.assertIn("url", params)
         self.assertEqual(params["url"], "redis://user:pass@remote:6380/2")
-    
+
     def test_decode_responses(self):
         """Test decode_responses configuration."""
-        config = RedisPoolConfig(
-            host="localhost",
-            decode_responses=True
-        )
-        
+        config = RedisPoolConfig(host="localhost", decode_responses=True)
+
         params = config.get_connection_params()
-        
+
         self.assertTrue(params["decode_responses"])
-    
+
     def test_health_check_interval(self):
         """Test health check interval configuration."""
-        config = RedisPoolConfig(
-            host="localhost",
-            health_check_interval=30
-        )
-        
+        config = RedisPoolConfig(host="localhost", health_check_interval=30)
+
         self.assertEqual(config.health_check_interval, 30)
-    
+
     def test_retry_on_timeout(self):
         """Test retry_on_timeout configuration."""
-        config = RedisPoolConfig(
-            host="localhost",
-            retry_on_timeout=True
-        )
-        
+        config = RedisPoolConfig(host="localhost", retry_on_timeout=True)
+
         params = config.get_connection_params()
-        
+
         self.assertTrue(params["retry_on_timeout"])
 
 
 class TestRedisPoolConfigEdgeCases(unittest.TestCase):
     """Test edge cases and error conditions."""
-    
+
     def test_special_characters_in_password(self):
         """Test password with special characters."""
-        config = RedisPoolConfig(
-            host="localhost",
-            password="p@ssw0rd!#$%"
-        )
-        
+        config = RedisPoolConfig(host="localhost", password="p@ssw0rd!#$%")
+
         params = config.get_connection_params()
         self.assertEqual(params["password"], "p@ssw0rd!#$%")
-    
+
     def test_ipv6_host(self):
         """Test IPv6 host address."""
-        config = RedisPoolConfig(
-            host="::1",
-            port=6379
-        )
-        
+        config = RedisPoolConfig(host="::1", port=6379)
+
         self.assertEqual(config.host, "::1")
-    
+
     def test_unix_socket_host(self):
         """Test Unix socket host."""
-        config = RedisPoolConfig(
-            host="/var/run/redis/redis.sock"
-        )
-        
+        config = RedisPoolConfig(host="/var/run/redis/redis.sock")
+
         self.assertEqual(config.host, "/var/run/redis/redis.sock")
-    
+
     def test_connection_url_with_query_params(self):
         """Test connection URL with query parameters."""
         url = "redis://localhost:6379/0?socket_timeout=5&socket_connect_timeout=3"
         config = RedisPoolConfig.from_url(url)
-        
+
         self.assertEqual(config.connection_url, url)
-    
+
     def test_max_idle_time_validation(self):
         """Test max_idle_time validation."""
         with self.assertRaisesRegex(ValueError, "max_idle_time must be positive"):
             RedisPoolConfig(host="localhost", max_idle_time=-1)
-    
+
     def test_max_lifetime_validation(self):
         """Test max_lifetime validation."""
         with self.assertRaisesRegex(ValueError, "max_lifetime must be positive"):
             RedisPoolConfig(host="localhost", max_lifetime=-1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

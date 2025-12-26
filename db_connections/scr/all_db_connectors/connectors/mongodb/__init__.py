@@ -11,6 +11,7 @@ from .health import MongoHealthChecker
 # Import sync pool
 try:
     from .pool import MongoSyncConnectionPool
+
     SYNC_AVAILABLE = True
 except ImportError:
     SYNC_AVAILABLE = False
@@ -19,6 +20,7 @@ except ImportError:
 # Import async pool
 try:
     from .pool import MongoAsyncConnectionPool
+
     ASYNC_AVAILABLE = True
 except ImportError:
     ASYNC_AVAILABLE = False
@@ -27,13 +29,14 @@ except ImportError:
 __all__ = [
     "MongoPoolConfig",
     "MongoSyncConnectionPool",
-    "MongoAsyncConnectionPool", 
+    "MongoAsyncConnectionPool",
     "MongoHealthChecker",
 ]
 
+
 def check_availability():
     """Check which MongoDB drivers are available.
-    
+
     Returns:
         Dictionary with availability status.
     """

@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'rabbitmq' / 'test_rabbitmq_pool_async.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "rabbitmq"
+        / "test_rabbitmq_pool_async.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,17 +30,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.config import (  # noqa: E402
-    RabbitMQPoolConfig
+    RabbitMQPoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.rabbitmq.pool import (  # noqa: E402, E501
-    RabbitMQAsyncConnectionPool
+    RabbitMQAsyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolTimeoutError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -119,29 +127,35 @@ class MockAsyncRabbitMQConnectionPool:
 def patch_async_pool_class():
     """Patch RabbitMQAsyncConnectionPool to make it concrete for testing."""
     from contextlib import asynccontextmanager
-    from db_connections.scr.all_db_connectors.core.health import HealthStatus, HealthState
+    from db_connections.scr.all_db_connectors.core.health import (
+        HealthStatus,
+        HealthState,
+    )
     from db_connections.scr.all_db_connectors.core.exceptions import (
         ConnectionError as PoolConnectionError,
-        PoolTimeoutError
+        PoolTimeoutError,
     )
     from db_connections.scr.all_db_connectors.core.utils import ConnectionMetadata
     from db_connections.scr.all_db_connectors.core.metrics import PoolMetrics
     from datetime import datetime
-    
+
     # Only patch if not already patched
-    if hasattr(RabbitMQAsyncConnectionPool, '_patched_for_testing'):
+    if hasattr(RabbitMQAsyncConnectionPool, "_patched_for_testing"):
         return
-    
+
     # Remove abstract methods from __abstractmethods__ to make class concrete
-    if hasattr(RabbitMQAsyncConnectionPool, '__abstractmethods__'):
+    if hasattr(RabbitMQAsyncConnectionPool, "__abstractmethods__"):
         RabbitMQAsyncConnectionPool.__abstractmethods__ = set()
-    
+
     # Store original __init__ to restore later
     RabbitMQAsyncConnectionPool._original_init = RabbitMQAsyncConnectionPool.__init__
-    
+
     def patched_init(self, config):
         """Patched __init__ that doesn't raise NotImplementedError."""
-        from db_connections.scr.all_db_connectors.core.base_async import BaseAsyncConnectionPool
+        from db_connections.scr.all_db_connectors.core.base_async import (
+            BaseAsyncConnectionPool,
+        )
+
         BaseAsyncConnectionPool.__init__(self, config)
         self.config = config
         self._initialized = False
@@ -150,22 +164,22 @@ def patch_async_pool_class():
         self._connection_metadata = {}
         self._metadata_lock = None  # Will be created lazily when needed
         self._init_should_fail = False  # For testing connection errors
-    
+
     # Create async context manager for get_connection
     @asynccontextmanager
     async def mock_get_connection(self):
         """Mock get_connection as async context manager."""
         if self._closed:
             raise PoolConnectionError("Pool is closed")
-        
+
         if not self._initialized:
             await self.initialize_pool()
-        
+
         # Check for timeout scenario
-        if hasattr(self._pool, 'acquire'):
+        if hasattr(self._pool, "acquire"):
             try:
                 conn = await self._pool.acquire(
-                    timeout=getattr(self.config, 'timeout', None)
+                    timeout=getattr(self.config, "timeout", None)
                 )
                 if conn is None:
                     raise PoolTimeoutError("Connection acquisition timed out")
@@ -173,10 +187,10 @@ def patch_async_pool_class():
                 raise PoolTimeoutError("Connection acquisition timed out")
         else:
             conn = MockAsyncRabbitMQConnection()
-        
+
         conn_id = id(conn)
         self._connections_in_use.add(conn_id)
-        
+
         # Track metadata - create lock lazily if needed
         if self._metadata_lock is None:
             try:
@@ -184,7 +198,7 @@ def patch_async_pool_class():
             except RuntimeError:
                 # No event loop, use a simple dict (for sync tests)
                 self._metadata_lock = None
-        
+
         if self._metadata_lock is not None:
             async with self._metadata_lock:
                 if conn_id not in self._connection_metadata:
@@ -193,7 +207,7 @@ def patch_async_pool_class():
                         last_used=datetime.now(),
                         use_count=0,
                         is_valid=True,
-                        in_use=True
+                        in_use=True,
                     )
                 else:
                     self._connection_metadata[conn_id].in_use = True
@@ -207,13 +221,13 @@ def patch_async_pool_class():
                     last_used=datetime.now(),
                     use_count=0,
                     is_valid=True,
-                    in_use=True
+                    in_use=True,
                 )
             else:
                 self._connection_metadata[conn_id].in_use = True
                 self._connection_metadata[conn_id].last_used = datetime.now()
                 self._connection_metadata[conn_id].use_count += 1
-        
+
         try:
             yield conn
         finally:
@@ -225,26 +239,25 @@ def patch_async_pool_class():
             else:
                 if conn_id in self._connection_metadata:
                     self._connection_metadata[conn_id].in_use = False
-    
+
     # Patch instance methods
     async def mock_initialize_pool(self):
         """Mock initialize_pool."""
         import sys
-        
+
         if self._init_should_fail:
             raise PoolConnectionError("Pool initialization failed")
-        
+
         # Check if aio_pika.connect_robust is patched to fail
         # Check both the module path used in pool.py and sys.modules
         pool_module_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool"
         )
         if pool_module_path in sys.modules:
             pool_module = sys.modules[pool_module_path]
-            if hasattr(pool_module, 'aio_pika'):
+            if hasattr(pool_module, "aio_pika"):
                 aio_pika = pool_module.aio_pika
-                if hasattr(aio_pika, 'connect_robust'):
+                if hasattr(aio_pika, "connect_robust"):
                     try:
                         # Try to call it to see if it raises
                         await aio_pika.connect_robust()
@@ -252,34 +265,34 @@ def patch_async_pool_class():
                         raise PoolConnectionError(
                             f"Pool initialization failed: {e}"
                         ) from e
-        
+
         self._initialized = True
         if self._pool is None:
             self._pool = []  # Set to empty list
-    
+
     async def mock_release_connection(self, connection):
         """Mock release_connection."""
         conn_id = id(connection)
         self._connections_in_use.discard(conn_id)
-    
+
     async def mock_close_connection(self, connection):
         """Mock close_connection."""
         conn_id = id(connection)
         self._connections_in_use.discard(conn_id)
-        if hasattr(connection, 'close'):
+        if hasattr(connection, "close"):
             await connection.close()
-    
+
     async def mock_close_all_connections(self):
         """Mock close_all_connections."""
         self._closed = True
         self._connections_in_use.clear()
-    
+
     async def mock_pool_status(self):
         """Mock pool_status."""
         max_conns = (
             self.config.max_connections + self.config.max_overflow
-            if hasattr(self.config, 'max_overflow') else
-            self.config.max_connections
+            if hasattr(self.config, "max_overflow")
+            else self.config.max_connections
         )
         return {
             "initialized": self._initialized,
@@ -290,31 +303,35 @@ def patch_async_pool_class():
             "max_connections": max_conns,
             "min_connections": (
                 self.config.min_connections
-                if hasattr(self.config, 'min_connections') else 1
+                if hasattr(self.config, "min_connections")
+                else 1
             ),
         }
-    
+
     async def mock_validate_connection(self, connection):
         """Mock validate_connection."""
         # Check if connection is closed/invalid
-        if hasattr(connection, 'is_closed') and connection.is_closed:
+        if hasattr(connection, "is_closed") and connection.is_closed:
             return False
-        if hasattr(connection, 'is_open') and not connection.is_open:
+        if hasattr(connection, "is_open") and not connection.is_open:
             return False
         return True
-    
+
     async def mock_health_check(self):
         """Mock health_check."""
         # Check pool utilization to determine health state
         # Use max_size (max_connections) only, not including overflow
         max_conns = (
             self.config.max_size
-            if hasattr(self.config, 'max_size') else
-            (self.config.max_connections
-             if hasattr(self.config, 'max_connections') else 10)
+            if hasattr(self.config, "max_size")
+            else (
+                self.config.max_connections
+                if hasattr(self.config, "max_connections")
+                else 10
+            )
         )
         utilization = len(self._connections_in_use) / max_conns if max_conns > 0 else 0
-        
+
         if utilization >= 0.8:
             state = HealthState.UNHEALTHY
             message = "Pool utilization high"
@@ -324,15 +341,15 @@ def patch_async_pool_class():
         else:
             state = HealthState.HEALTHY
             message = "Pool is healthy"
-        
+
         return HealthStatus(state=state, message=message)
-    
+
     async def mock_get_metrics(self):
         """Mock get_metrics."""
         max_conns = (
             self.config.max_connections + self.config.max_overflow
-            if hasattr(self.config, 'max_overflow') else
-            self.config.max_connections
+            if hasattr(self.config, "max_overflow")
+            else self.config.max_connections
         )
         return PoolMetrics(
             total_connections=len(self._connections_in_use),
@@ -342,18 +359,17 @@ def patch_async_pool_class():
             max_connections=max_conns,
             min_connections=(
                 self.config.min_connections
-                if hasattr(self.config, 'min_connections') else 1
+                if hasattr(self.config, "min_connections")
+                else 1
             ),
         )
-    
+
     async def mock_database_health_check(self):
         """Mock database_health_check."""
         return HealthStatus(
-            state=HealthState.HEALTHY,
-            message="OK",
-            response_time_ms=10.0
+            state=HealthState.HEALTHY, message="OK", response_time_ms=10.0
         )
-    
+
     def mock_repr(self):
         """Mock __repr__."""
         return (
@@ -362,17 +378,17 @@ def patch_async_pool_class():
             f"port={self.config.port} "
             f"initialized={self._initialized}>"
         )
-    
+
     async def mock_aenter(self):
         """Mock __aenter__."""
         if not self._initialized:
             await self.initialize_pool()
         return self
-    
+
     async def mock_aexit(self, exc_type, exc_value, traceback):
         """Mock __aexit__."""
         await self.close_all_connections()
-    
+
     # Patch the class methods
     RabbitMQAsyncConnectionPool.__init__ = patched_init
     RabbitMQAsyncConnectionPool.initialize_pool = mock_initialize_pool
@@ -410,12 +426,12 @@ class TestAsyncRabbitMQConnectionPoolInit(unittest.TestCase):
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return MockAsyncRabbitMQConnection()
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -436,12 +452,10 @@ class TestAsyncRabbitMQConnectionPoolInit(unittest.TestCase):
 
     def test_init_validates_config(self):
         """Test pool validates configuration on init."""
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             invalid_config = RabbitMQPoolConfig(
                 host="localhost",
-                max_connections=-1  # Invalid
+                max_connections=-1,  # Invalid
             )
 
     def test_repr(self):
@@ -455,9 +469,7 @@ class TestAsyncRabbitMQConnectionPoolInit(unittest.TestCase):
         self.assertIn("5672", repr_str)
 
 
-class TestAsyncRabbitMQConnectionPoolInitialization(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolInitialization(unittest.IsolatedAsyncioTestCase):
     """Test async pool initialization."""
 
     def setUp(self):
@@ -476,12 +488,12 @@ class TestAsyncRabbitMQConnectionPoolInitialization(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return MockAsyncRabbitMQConnection()
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -510,21 +522,19 @@ class TestAsyncRabbitMQConnectionPoolInitialization(
 
     async def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
+
         async def failing_create_connection(**kwargs):
             raise Exception("Connection failed")
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         with patch(patch_path) as mock_module:
             mock_module.connect_robust = failing_create_connection
 
             pool = RabbitMQAsyncConnectionPool(self.rabbitmq_config)
 
-            with self.assertRaisesRegex(
-                ConnectionError, "Pool initialization failed"
-            ):
+            with self.assertRaisesRegex(ConnectionError, "Pool initialization failed"):
                 await pool.initialize_pool()
 
     async def test_lazy_initialization(self):
@@ -540,9 +550,7 @@ class TestAsyncRabbitMQConnectionPoolInitialization(
         self.assertTrue(pool._initialized)
 
 
-class TestAsyncRabbitMQConnectionPoolGetConnection(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolGetConnection(unittest.IsolatedAsyncioTestCase):
     """Test async connection acquisition."""
 
     def setUp(self):
@@ -562,12 +570,12 @@ class TestAsyncRabbitMQConnectionPoolGetConnection(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return self.mock_async_rabbitmq_connection
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -599,16 +607,12 @@ class TestAsyncRabbitMQConnectionPoolGetConnection(
         """Test connection validation on checkout."""
         self._setup_mock_async_aio_pika_module()
         config = RabbitMQPoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = RabbitMQAsyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -633,14 +637,10 @@ class TestAsyncRabbitMQConnectionPoolGetConnection(
             if pool._metadata_lock is not None:
                 async with pool._metadata_lock:
                     self.assertIn(conn_id, pool._connection_metadata)
-                    self.assertTrue(
-                        pool._connection_metadata[conn_id].in_use
-                    )
+                    self.assertTrue(pool._connection_metadata[conn_id].in_use)
             else:
                 self.assertIn(conn_id, pool._connection_metadata)
-                self.assertTrue(
-                    pool._connection_metadata[conn_id].in_use
-                )
+                self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     async def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -656,6 +656,7 @@ class TestAsyncRabbitMQConnectionPoolGetConnection(
 
     async def test_get_connection_timeout(self):
         """Test connection acquisition timeout."""
+
         async def timeout_acquire(timeout=None):
             raise asyncio.TimeoutError("Timeout")
 
@@ -666,8 +667,7 @@ class TestAsyncRabbitMQConnectionPoolGetConnection(
             return mock_pool
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         with patch(patch_path) as mock_module:
             mock_module.connect_robust = create_connection_mock
@@ -684,9 +684,7 @@ class TestAsyncRabbitMQConnectionPoolGetConnection(
                     pass
 
 
-class TestAsyncRabbitMQConnectionPoolRelease(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolRelease(unittest.IsolatedAsyncioTestCase):
     """Test async connection release."""
 
     def setUp(self):
@@ -706,12 +704,12 @@ class TestAsyncRabbitMQConnectionPoolRelease(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return self.mock_async_rabbitmq_connection
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -735,9 +733,7 @@ class TestAsyncRabbitMQConnectionPoolRelease(
         self.assertNotIn(conn_id, pool._connections_in_use)
 
 
-class TestAsyncRabbitMQConnectionPoolClose(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolClose(unittest.IsolatedAsyncioTestCase):
     """Test async pool closing."""
 
     def setUp(self):
@@ -757,12 +753,12 @@ class TestAsyncRabbitMQConnectionPoolClose(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return self.mock_async_rabbitmq_connection
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -798,9 +794,7 @@ class TestAsyncRabbitMQConnectionPoolClose(
         self.assertEqual(len(pool._connections_in_use), 0)
 
 
-class TestAsyncRabbitMQConnectionPoolStatus(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolStatus(unittest.IsolatedAsyncioTestCase):
     """Test async pool status and metrics."""
 
     def setUp(self):
@@ -819,12 +813,12 @@ class TestAsyncRabbitMQConnectionPoolStatus(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return MockAsyncRabbitMQConnection()
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -843,8 +837,7 @@ class TestAsyncRabbitMQConnectionPoolStatus(
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.rabbitmq_config.max_connections +
-            self.rabbitmq_config.max_overflow
+            self.rabbitmq_config.max_connections + self.rabbitmq_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -859,8 +852,7 @@ class TestAsyncRabbitMQConnectionPoolStatus(
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.rabbitmq_config.max_connections +
-            self.rabbitmq_config.max_overflow
+            self.rabbitmq_config.max_connections + self.rabbitmq_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
         self.assertEqual(
@@ -879,18 +871,13 @@ class TestAsyncRabbitMQConnectionPoolStatus(
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.rabbitmq_config.max_connections +
-            self.rabbitmq_config.max_overflow
+            self.rabbitmq_config.max_connections + self.rabbitmq_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
-        self.assertEqual(
-            metrics.min_connections, self.rabbitmq_config.min_connections
-        )
+        self.assertEqual(metrics.min_connections, self.rabbitmq_config.min_connections)
 
 
-class TestAsyncRabbitMQConnectionPoolValidation(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolValidation(unittest.IsolatedAsyncioTestCase):
     """Test async connection validation."""
 
     def setUp(self):
@@ -910,12 +897,12 @@ class TestAsyncRabbitMQConnectionPoolValidation(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return self.mock_async_rabbitmq_connection
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -929,9 +916,7 @@ class TestAsyncRabbitMQConnectionPoolValidation(
         self._setup_mock_async_aio_pika_module()
         pool = RabbitMQAsyncConnectionPool(self.rabbitmq_config)
 
-        result = await pool.validate_connection(
-            self.mock_async_rabbitmq_connection
-        )
+        result = await pool.validate_connection(self.mock_async_rabbitmq_connection)
 
         self.assertTrue(result)
 
@@ -950,9 +935,7 @@ class TestAsyncRabbitMQConnectionPoolValidation(
         self.assertFalse(result)
 
 
-class TestAsyncRabbitMQConnectionPoolHealth(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolHealth(unittest.IsolatedAsyncioTestCase):
     """Test async health checks."""
 
     def setUp(self):
@@ -972,12 +955,12 @@ class TestAsyncRabbitMQConnectionPoolHealth(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return self.mock_async_rabbitmq_connection
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -1008,9 +991,7 @@ class TestAsyncRabbitMQConnectionPoolHealth(
 
         health = await pool.health_check()
 
-        self.assertIn(
-            health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
     async def test_database_health_check(self):
         """Test database health check."""
@@ -1022,18 +1003,12 @@ class TestAsyncRabbitMQConnectionPoolHealth(
 
         self.assertIn(
             health.state,
-            [
-                HealthState.HEALTHY,
-                HealthState.DEGRADED,
-                HealthState.UNHEALTHY
-            ]
+            [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
         )
         self.assertIsNotNone(health.response_time_ms)
 
 
-class TestAsyncRabbitMQConnectionPoolContextManager(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolContextManager(unittest.IsolatedAsyncioTestCase):
     """Test async context manager support."""
 
     def setUp(self):
@@ -1052,12 +1027,12 @@ class TestAsyncRabbitMQConnectionPoolContextManager(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return MockAsyncRabbitMQConnection()
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -1069,9 +1044,7 @@ class TestAsyncRabbitMQConnectionPoolContextManager(
     async def test_context_manager_enter(self):
         """Test pool async context manager enter."""
         self._setup_mock_async_aio_pika_module()
-        async with RabbitMQAsyncConnectionPool(
-            self.rabbitmq_config
-        ) as pool:
+        async with RabbitMQAsyncConnectionPool(self.rabbitmq_config) as pool:
             self.assertTrue(pool._initialized)
             self.assertFalse(pool._closed)
 
@@ -1088,18 +1061,14 @@ class TestAsyncRabbitMQConnectionPoolContextManager(
     async def test_context_manager_with_connections(self):
         """Test using connections within async context manager."""
         self._setup_mock_async_aio_pika_module()
-        async with RabbitMQAsyncConnectionPool(
-            self.rabbitmq_config
-        ) as pool:
+        async with RabbitMQAsyncConnectionPool(self.rabbitmq_config) as pool:
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
         self.assertTrue(pool._closed)
 
 
-class TestAsyncRabbitMQConnectionPoolConcurrency(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncRabbitMQConnectionPoolConcurrency(unittest.IsolatedAsyncioTestCase):
     """Test concurrent async operations."""
 
     def setUp(self):
@@ -1118,12 +1087,12 @@ class TestAsyncRabbitMQConnectionPoolConcurrency(
 
     def _setup_mock_async_aio_pika_module(self):
         """Set up mock aio_pika module."""
+
         async def create_connection_mock(**kwargs):
             return self.mock_async_rabbitmq_connection
 
         patch_path = (
-            "db_connections.scr.all_db_connectors.connectors."
-            "rabbitmq.pool.aio_pika"
+            "db_connections.scr.all_db_connectors.connectors.rabbitmq.pool.aio_pika"
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.connect_robust = create_connection_mock
@@ -1169,6 +1138,5 @@ class TestAsyncRabbitMQConnectionPoolConcurrency(
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

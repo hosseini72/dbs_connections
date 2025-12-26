@@ -12,7 +12,14 @@ try:
     _file_path = Path(__file__).resolve()
 except NameError:
     # __file__ might not be defined in some contexts
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'clickhouse' / 'test_clickhouse_config.py'  # noqa: E501
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "clickhouse"
+        / "test_clickhouse_config.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -20,7 +27,7 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.clickhouse.config import (  # noqa: E402, E501
-    ClickHousePoolConfig
+    ClickHousePoolConfig,
 )
 
 
@@ -29,9 +36,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
 
     def test_default_values(self):
         """Test default configuration values."""
-        config = ClickHousePoolConfig(
-            host="localhost"
-        )
+        config = ClickHousePoolConfig(host="localhost")
 
         self.assertEqual(config.host, "localhost")
         self.assertEqual(config.port, 9000)
@@ -56,7 +61,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
             max_idle_time=120,
             max_lifetime=7200,
             secure=True,
-            verify=True
+            verify=True,
         )
 
         self.assertEqual(config.host, "clickhouse.example.com")
@@ -95,27 +100,19 @@ class TestClickHousePoolConfig(unittest.TestCase):
 
     def test_invalid_max_connections(self):
         """Test validation of max_connections."""
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             ClickHousePoolConfig(host="localhost", max_connections=0)
 
     def test_invalid_min_connections(self):
         """Test validation of min_connections."""
-        with self.assertRaisesRegex(
-            ValueError, "min_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "min_connections must be positive"):
             ClickHousePoolConfig(host="localhost", min_connections=0)
 
     def test_min_greater_than_max(self):
         """Test validation that min_connections <= max_connections."""
-        with self.assertRaisesRegex(
-            ValueError, "min_connections cannot be greater"
-        ):
+        with self.assertRaisesRegex(ValueError, "min_connections cannot be greater"):
             ClickHousePoolConfig(
-                host="localhost",
-                min_connections=20,
-                max_connections=10
+                host="localhost", min_connections=20, max_connections=10
             )
 
     def test_get_connection_params(self):
@@ -128,7 +125,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
             database="testdb",
             timeout=15,
             connect_timeout=10,
-            send_receive_timeout=30
+            send_receive_timeout=30,
         )
 
         params = config.get_connection_params()
@@ -144,10 +141,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
 
     def test_get_connection_params_no_auth(self):
         """Test connection parameters without authentication."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            port=9000
-        )
+        config = ClickHousePoolConfig(host="localhost", port=9000)
 
         params = config.get_connection_params()
 
@@ -162,7 +156,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
             verify=True,
             ca_certs="/path/to/ca.crt",
             cert="/path/to/client.crt",
-            key="/path/to/client.key"
+            key="/path/to/client.key",
         )
 
         params = config.get_connection_params()
@@ -180,7 +174,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
             port=9000,
             username="user",
             password="pass",
-            database="testdb"
+            database="testdb",
         )
 
         url = config.get_connection_url()
@@ -192,10 +186,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
 
     def test_get_connection_url_no_auth(self):
         """Test connection URL without authentication."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            port=9000
-        )
+        config = ClickHousePoolConfig(host="localhost", port=9000)
 
         url = config.get_connection_url()
 
@@ -203,11 +194,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
 
     def test_get_connection_url_with_ssl(self):
         """Test connection URL with SSL (clickhouses://)."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            port=9440,
-            secure=True
-        )
+        config = ClickHousePoolConfig(host="localhost", port=9440, secure=True)
 
         url = config.get_connection_url()
 
@@ -226,9 +213,7 @@ class TestClickHousePoolConfig(unittest.TestCase):
         url = "clickhouse://localhost:9000/default"
 
         config = ClickHousePoolConfig.from_url(
-            url,
-            max_connections=20,
-            min_connections=5
+            url, max_connections=20, min_connections=5
         )
 
         self.assertEqual(config.connection_url, url)
@@ -293,23 +278,17 @@ class TestClickHousePoolConfig(unittest.TestCase):
         config = ClickHousePoolConfig(
             connection_url="clickhouse://user:pass@remote:8123/remotedb",
             host="localhost",  # Should be ignored
-            port=9000  # Should be ignored
+            port=9000,  # Should be ignored
         )
 
         params = config.get_connection_params()
 
         self.assertIn("url", params)
-        self.assertEqual(
-            params["url"],
-            "clickhouse://user:pass@remote:8123/remotedb"
-        )
+        self.assertEqual(params["url"], "clickhouse://user:pass@remote:8123/remotedb")
 
     def test_compression_configuration(self):
         """Test compression configuration."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            compression=True
-        )
+        config = ClickHousePoolConfig(host="localhost", compression=True)
 
         params = config.get_connection_params()
 
@@ -319,26 +298,17 @@ class TestClickHousePoolConfig(unittest.TestCase):
         """Test settings configuration."""
         config = ClickHousePoolConfig(
             host="localhost",
-            settings={
-                "max_execution_time": 300,
-                "max_memory_usage": 10000000000
-            }
+            settings={"max_execution_time": 300, "max_memory_usage": 10000000000},
         )
 
         params = config.get_connection_params()
 
         self.assertIn("settings", params)
-        self.assertEqual(
-            params["settings"]["max_execution_time"],
-            300
-        )
+        self.assertEqual(params["settings"]["max_execution_time"], 300)
 
     def test_client_name_configuration(self):
         """Test client name configuration."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            client_name="MyApp"
-        )
+        config = ClickHousePoolConfig(host="localhost", client_name="MyApp")
 
         params = config.get_connection_params()
 
@@ -350,20 +320,14 @@ class TestClickHousePoolConfigEdgeCases(unittest.TestCase):
 
     def test_special_characters_in_password(self):
         """Test password with special characters."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            password="p@ssw0rd!#$%"
-        )
+        config = ClickHousePoolConfig(host="localhost", password="p@ssw0rd!#$%")
 
         params = config.get_connection_params()
         self.assertEqual(params["password"], "p@ssw0rd!#$%")
 
     def test_ipv6_host(self):
         """Test IPv6 host address."""
-        config = ClickHousePoolConfig(
-            host="::1",
-            port=9000
-        )
+        config = ClickHousePoolConfig(host="::1", port=9000)
 
         self.assertEqual(config.host, "::1")
 
@@ -376,40 +340,27 @@ class TestClickHousePoolConfigEdgeCases(unittest.TestCase):
 
     def test_max_idle_time_validation(self):
         """Test max_idle_time validation."""
-        with self.assertRaisesRegex(
-            ValueError, "max_idle_time must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_idle_time must be positive"):
             ClickHousePoolConfig(host="localhost", max_idle_time=-1)
 
     def test_max_lifetime_validation(self):
         """Test max_lifetime validation."""
-        with self.assertRaisesRegex(
-            ValueError, "max_lifetime must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_lifetime must be positive"):
             ClickHousePoolConfig(host="localhost", max_lifetime=-1)
 
     def test_cluster_configuration(self):
         """Test cluster configuration."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            cluster="my_cluster"
-        )
+        config = ClickHousePoolConfig(host="localhost", cluster="my_cluster")
 
         params = config.get_connection_params()
         self.assertEqual(params["cluster"], "my_cluster")
 
     def test_http_port_vs_native_port(self):
         """Test HTTP port vs native port."""
-        config_http = ClickHousePoolConfig(
-            host="localhost",
-            port=8123,
-            use_http=True
-        )
+        config_http = ClickHousePoolConfig(host="localhost", port=8123, use_http=True)
 
         config_native = ClickHousePoolConfig(
-            host="localhost",
-            port=9000,
-            use_http=False
+            host="localhost", port=9000, use_http=False
         )
 
         self.assertTrue(config_http.use_http)
@@ -418,8 +369,7 @@ class TestClickHousePoolConfigEdgeCases(unittest.TestCase):
     def test_alt_hosts_configuration(self):
         """Test alternative hosts configuration."""
         config = ClickHousePoolConfig(
-            host="localhost",
-            alt_hosts=["host2:9000", "host3:9000"]
+            host="localhost", alt_hosts=["host2:9000", "host3:9000"]
         )
 
         params = config.get_connection_params()
@@ -428,25 +378,18 @@ class TestClickHousePoolConfigEdgeCases(unittest.TestCase):
 
     def test_insert_block_size(self):
         """Test insert block size configuration."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            insert_block_size=1048576
-        )
+        config = ClickHousePoolConfig(host="localhost", insert_block_size=1048576)
 
         params = config.get_connection_params()
         self.assertEqual(params["insert_block_size"], 1048576)
 
     def test_max_block_size(self):
         """Test max block size configuration."""
-        config = ClickHousePoolConfig(
-            host="localhost",
-            max_block_size=65536
-        )
+        config = ClickHousePoolConfig(host="localhost", max_block_size=65536)
 
         params = config.get_connection_params()
         self.assertEqual(params["max_block_size"], 65536)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

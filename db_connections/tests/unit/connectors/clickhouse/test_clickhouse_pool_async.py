@@ -14,7 +14,15 @@ try:
 except NameError:
     # __file__ might not be defined in some contexts
     import os
-    _file_path = Path(os.getcwd()) / 'tests' / 'unit' / 'connectors' / 'clickhouse' / 'test_clickhouse_pool_async.py'  # noqa: E501
+
+    _file_path = (
+        Path(os.getcwd())
+        / "tests"
+        / "unit"
+        / "connectors"
+        / "clickhouse"
+        / "test_clickhouse_pool_async.py"
+    )  # noqa: E501
 
 parent_dir = _file_path.parent.parent.parent.parent.parent.parent
 parent_dir_str = str(parent_dir)
@@ -22,17 +30,17 @@ if parent_dir_str not in sys.path:
     sys.path.insert(0, parent_dir_str)
 
 from db_connections.scr.all_db_connectors.connectors.clickhouse.config import (  # noqa: E402
-    ClickHousePoolConfig
+    ClickHousePoolConfig,
 )
 from db_connections.scr.all_db_connectors.connectors.clickhouse.pool import (  # noqa: E402, E501
-    ClickHouseAsyncConnectionPool
+    ClickHouseAsyncConnectionPool,
 )
 from db_connections.scr.all_db_connectors.core.exceptions import (  # noqa: E402
     ConnectionError,
     PoolTimeoutError,
 )
 from db_connections.scr.all_db_connectors.core.health import (  # noqa: E402
-    HealthState
+    HealthState,
 )
 
 
@@ -42,11 +50,7 @@ class MockAsyncClickHouseConnection:
     def __init__(self):
         self.closed = False
         self.connected = True
-        self.server_info = {
-            "version_major": 23,
-            "version_minor": 1,
-            "revision": 54463
-        }
+        self.server_info = {"version_major": 23, "version_minor": 1, "revision": 54463}
 
     async def ping(self):
         """Mock ping."""
@@ -127,6 +131,7 @@ class TestAsyncClickHouseConnectionPoolInit(unittest.TestCase):
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return MockAsyncClickHouseConnection()
 
@@ -136,12 +141,12 @@ class TestAsyncClickHouseConnectionPoolInit(unittest.TestCase):
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -160,12 +165,10 @@ class TestAsyncClickHouseConnectionPoolInit(unittest.TestCase):
 
     def test_init_validates_config(self):
         """Test pool validates configuration on init."""
-        with self.assertRaisesRegex(
-            ValueError, "max_connections must be positive"
-        ):
+        with self.assertRaisesRegex(ValueError, "max_connections must be positive"):
             invalid_config = ClickHousePoolConfig(
                 host="localhost",
-                max_connections=-1  # Invalid
+                max_connections=-1,  # Invalid
             )
 
     def test_repr(self):
@@ -179,9 +182,7 @@ class TestAsyncClickHouseConnectionPoolInit(unittest.TestCase):
         self.assertIn("9000", repr_str)
 
 
-class TestAsyncClickHouseConnectionPoolInitialization(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolInitialization(unittest.IsolatedAsyncioTestCase):
     """Test async pool initialization."""
 
     def setUp(self):
@@ -199,6 +200,7 @@ class TestAsyncClickHouseConnectionPoolInitialization(
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return MockAsyncClickHouseConnection()
 
@@ -208,12 +210,12 @@ class TestAsyncClickHouseConnectionPoolInitialization(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -240,6 +242,7 @@ class TestAsyncClickHouseConnectionPoolInitialization(
 
     async def test_initialize_pool_connection_error(self):
         """Test pool initialization with connection error."""
+
         async def failing_create_client(**kwargs):
             raise Exception("Connection failed")
 
@@ -253,7 +256,7 @@ class TestAsyncClickHouseConnectionPoolInitialization(
             with patch(
                 "db_connections.scr.all_db_connectors.connectors."
                 "clickhouse.pool.ASYNC_AVAILABLE",
-                True
+                True,
             ):
                 pool = ClickHouseAsyncConnectionPool(self.clickhouse_config)
 
@@ -275,9 +278,7 @@ class TestAsyncClickHouseConnectionPoolInitialization(
         self.assertTrue(pool._initialized)
 
 
-class TestAsyncClickHouseConnectionPoolGetConnection(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolGetConnection(unittest.IsolatedAsyncioTestCase):
     """Test async connection acquisition."""
 
     def setUp(self):
@@ -292,12 +293,11 @@ class TestAsyncClickHouseConnectionPoolGetConnection(
         self.mock_async_clickhouse_pool = MockAsyncClickHouseConnectionPool(
             max_connections=10
         )
-        self.mock_async_clickhouse_connection = (
-            MockAsyncClickHouseConnection()
-        )
+        self.mock_async_clickhouse_connection = MockAsyncClickHouseConnection()
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_clickhouse_connection
 
@@ -307,12 +307,12 @@ class TestAsyncClickHouseConnectionPoolGetConnection(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -342,16 +342,12 @@ class TestAsyncClickHouseConnectionPoolGetConnection(
         """Test connection validation on checkout."""
         self._setup_mock_async_clickhouse_module()
         config = ClickHousePoolConfig(
-            host="localhost",
-            validate_on_checkout=True,
-            pre_ping=True
+            host="localhost", validate_on_checkout=True, pre_ping=True
         )
 
         pool = ClickHouseAsyncConnectionPool(config)
 
-        with patch.object(
-            pool, "validate_connection", return_value=True
-        ):
+        with patch.object(pool, "validate_connection", return_value=True):
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
@@ -375,9 +371,7 @@ class TestAsyncClickHouseConnectionPoolGetConnection(
             conn_id = id(conn)
             async with pool._metadata_lock:
                 self.assertIn(conn_id, pool._connection_metadata)
-                self.assertTrue(
-                    pool._connection_metadata[conn_id].in_use
-                )
+                self.assertTrue(pool._connection_metadata[conn_id].in_use)
 
     async def test_get_connection_releases_on_exit(self):
         """Test connection is released after context manager exit."""
@@ -396,6 +390,7 @@ class TestAsyncClickHouseConnectionPoolGetConnection(
         # Setup mock to succeed for pool initialization
         # but timeout when getting connection from empty pool
         call_count = [0]
+
         async def create_client_mock(**kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
@@ -417,24 +412,24 @@ class TestAsyncClickHouseConnectionPoolGetConnection(
             with patch(
                 "db_connections.scr.all_db_connectors.connectors."
                 "clickhouse.pool.ASYNC_AVAILABLE",
-                True
+                True,
             ):
                 pool = ClickHouseAsyncConnectionPool(self.clickhouse_config)
                 await pool.initialize_pool()
-                
+
                 # Clear the pool so get_connection will try to create a new one
                 while not pool._pool.empty():
                     pool._pool.get_nowait()
 
                 # This should timeout or fail
-                with self.assertRaises((PoolTimeoutError, ConnectionError, asyncio.TimeoutError)):
+                with self.assertRaises(
+                    (PoolTimeoutError, ConnectionError, asyncio.TimeoutError)
+                ):
                     async with pool.get_connection():
                         pass
 
 
-class TestAsyncClickHouseConnectionPoolRelease(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolRelease(unittest.IsolatedAsyncioTestCase):
     """Test async connection release."""
 
     def setUp(self):
@@ -449,12 +444,11 @@ class TestAsyncClickHouseConnectionPoolRelease(
         self.mock_async_clickhouse_pool = MockAsyncClickHouseConnectionPool(
             max_connections=10
         )
-        self.mock_async_clickhouse_connection = (
-            MockAsyncClickHouseConnection()
-        )
+        self.mock_async_clickhouse_connection = MockAsyncClickHouseConnection()
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_clickhouse_connection
 
@@ -464,12 +458,12 @@ class TestAsyncClickHouseConnectionPoolRelease(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -491,9 +485,7 @@ class TestAsyncClickHouseConnectionPoolRelease(
         self.assertNotIn(conn_id, pool._connections_in_use)
 
 
-class TestAsyncClickHouseConnectionPoolClose(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolClose(unittest.IsolatedAsyncioTestCase):
     """Test async pool closing."""
 
     def setUp(self):
@@ -508,12 +500,11 @@ class TestAsyncClickHouseConnectionPoolClose(
         self.mock_async_clickhouse_pool = MockAsyncClickHouseConnectionPool(
             max_connections=10
         )
-        self.mock_async_clickhouse_connection = (
-            MockAsyncClickHouseConnection()
-        )
+        self.mock_async_clickhouse_connection = MockAsyncClickHouseConnection()
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_clickhouse_connection
 
@@ -523,12 +514,12 @@ class TestAsyncClickHouseConnectionPoolClose(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -562,9 +553,7 @@ class TestAsyncClickHouseConnectionPoolClose(
         self.assertEqual(len(pool._connections_in_use), 0)
 
 
-class TestAsyncClickHouseConnectionPoolStatus(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolStatus(unittest.IsolatedAsyncioTestCase):
     """Test async pool status and metrics."""
 
     def setUp(self):
@@ -582,6 +571,7 @@ class TestAsyncClickHouseConnectionPoolStatus(
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return MockAsyncClickHouseConnection()
 
@@ -591,12 +581,12 @@ class TestAsyncClickHouseConnectionPoolStatus(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -613,8 +603,7 @@ class TestAsyncClickHouseConnectionPoolStatus(
         self.assertFalse(status["initialized"])
         self.assertEqual(status["total_connections"], 0)
         expected_max = (
-            self.clickhouse_config.max_connections +
-            self.clickhouse_config.max_overflow
+            self.clickhouse_config.max_connections + self.clickhouse_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
 
@@ -629,8 +618,7 @@ class TestAsyncClickHouseConnectionPoolStatus(
         self.assertTrue(status["initialized"])
         self.assertFalse(status["closed"])
         expected_max = (
-            self.clickhouse_config.max_connections +
-            self.clickhouse_config.max_overflow
+            self.clickhouse_config.max_connections + self.clickhouse_config.max_overflow
         )
         self.assertEqual(status["max_connections"], expected_max)
         self.assertEqual(
@@ -649,8 +637,7 @@ class TestAsyncClickHouseConnectionPoolStatus(
         self.assertGreaterEqual(metrics.active_connections, 0)
         self.assertGreaterEqual(metrics.idle_connections, 0)
         expected_max = (
-            self.clickhouse_config.max_connections +
-            self.clickhouse_config.max_overflow
+            self.clickhouse_config.max_connections + self.clickhouse_config.max_overflow
         )
         self.assertEqual(metrics.max_connections, expected_max)
         self.assertEqual(
@@ -658,9 +645,7 @@ class TestAsyncClickHouseConnectionPoolStatus(
         )
 
 
-class TestAsyncClickHouseConnectionPoolValidation(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolValidation(unittest.IsolatedAsyncioTestCase):
     """Test async connection validation."""
 
     def setUp(self):
@@ -675,12 +660,11 @@ class TestAsyncClickHouseConnectionPoolValidation(
         self.mock_async_clickhouse_pool = MockAsyncClickHouseConnectionPool(
             max_connections=10
         )
-        self.mock_async_clickhouse_connection = (
-            MockAsyncClickHouseConnection()
-        )
+        self.mock_async_clickhouse_connection = MockAsyncClickHouseConnection()
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_clickhouse_connection
 
@@ -690,12 +674,12 @@ class TestAsyncClickHouseConnectionPoolValidation(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -707,9 +691,7 @@ class TestAsyncClickHouseConnectionPoolValidation(
         self._setup_mock_async_clickhouse_module()
         pool = ClickHouseAsyncConnectionPool(self.clickhouse_config)
 
-        result = await pool.validate_connection(
-            self.mock_async_clickhouse_connection
-        )
+        result = await pool.validate_connection(self.mock_async_clickhouse_connection)
 
         self.assertTrue(result)
 
@@ -720,18 +702,14 @@ class TestAsyncClickHouseConnectionPoolValidation(
 
         # Create connection that will fail validation
         bad_conn = Mock()
-        bad_conn.ping = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
+        bad_conn.ping = AsyncMock(side_effect=Exception("Connection lost"))
 
         result = await pool.validate_connection(bad_conn)
 
         self.assertFalse(result)
 
 
-class TestAsyncClickHouseConnectionPoolHealth(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolHealth(unittest.IsolatedAsyncioTestCase):
     """Test async health checks."""
 
     def setUp(self):
@@ -746,12 +724,11 @@ class TestAsyncClickHouseConnectionPoolHealth(
         self.mock_async_clickhouse_pool = MockAsyncClickHouseConnectionPool(
             max_connections=10
         )
-        self.mock_async_clickhouse_connection = (
-            MockAsyncClickHouseConnection()
-        )
+        self.mock_async_clickhouse_connection = MockAsyncClickHouseConnection()
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_clickhouse_connection
 
@@ -761,12 +738,12 @@ class TestAsyncClickHouseConnectionPoolHealth(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -803,14 +780,14 @@ class TestAsyncClickHouseConnectionPoolHealth(
         # Simulate high utilization by creating metadata for connections in use
         # We need both _connections_in_use and _connection_metadata to be set
         from db_connections.scr.all_db_connectors.core.utils import ConnectionMetadata
-        
+
         # Clear the initial connection from the pool and add it to in_use
         # Then add 7 more to get 8 total active connections
         initial_conn_id = None
         if pool._connection_metadata:
             initial_conn_id = list(pool._connection_metadata.keys())[0]
             pool._connections_in_use.add(initial_conn_id)
-        
+
         # Add 7 more connections to get 8 total active (80% utilization)
         for i in range(7):
             conn_id = i + 1000  # Use unique IDs
@@ -822,9 +799,7 @@ class TestAsyncClickHouseConnectionPoolHealth(
 
         # With 8 active out of max 10, utilization is 0.8, which should be DEGRADED
         # (0.7 <= 0.8 < 0.9)
-        self.assertIn(
-            health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY]
-        )
+        self.assertIn(health.state, [HealthState.DEGRADED, HealthState.UNHEALTHY])
 
     async def test_database_health_check(self):
         """Test database health check."""
@@ -836,18 +811,12 @@ class TestAsyncClickHouseConnectionPoolHealth(
 
         self.assertIn(
             health.state,
-            [
-                HealthState.HEALTHY,
-                HealthState.DEGRADED,
-                HealthState.UNHEALTHY
-            ]
+            [HealthState.HEALTHY, HealthState.DEGRADED, HealthState.UNHEALTHY],
         )
         self.assertIsNotNone(health.response_time_ms)
 
 
-class TestAsyncClickHouseConnectionPoolContextManager(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolContextManager(unittest.IsolatedAsyncioTestCase):
     """Test async context manager support."""
 
     def setUp(self):
@@ -865,6 +834,7 @@ class TestAsyncClickHouseConnectionPoolContextManager(
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return MockAsyncClickHouseConnection()
 
@@ -874,12 +844,12 @@ class TestAsyncClickHouseConnectionPoolContextManager(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -889,9 +859,7 @@ class TestAsyncClickHouseConnectionPoolContextManager(
     async def test_context_manager_enter(self):
         """Test pool async context manager enter."""
         self._setup_mock_async_clickhouse_module()
-        async with ClickHouseAsyncConnectionPool(
-            self.clickhouse_config
-        ) as pool:
+        async with ClickHouseAsyncConnectionPool(self.clickhouse_config) as pool:
             self.assertTrue(pool._initialized)
             self.assertFalse(pool._closed)
 
@@ -908,18 +876,14 @@ class TestAsyncClickHouseConnectionPoolContextManager(
     async def test_context_manager_with_connections(self):
         """Test using connections within async context manager."""
         self._setup_mock_async_clickhouse_module()
-        async with ClickHouseAsyncConnectionPool(
-            self.clickhouse_config
-        ) as pool:
+        async with ClickHouseAsyncConnectionPool(self.clickhouse_config) as pool:
             async with pool.get_connection() as conn:
                 self.assertIsNotNone(conn)
 
         self.assertTrue(pool._closed)
 
 
-class TestAsyncClickHouseConnectionPoolConcurrency(
-    unittest.IsolatedAsyncioTestCase
-):
+class TestAsyncClickHouseConnectionPoolConcurrency(unittest.IsolatedAsyncioTestCase):
     """Test concurrent async operations."""
 
     def setUp(self):
@@ -934,12 +898,11 @@ class TestAsyncClickHouseConnectionPoolConcurrency(
         self.mock_async_clickhouse_pool = MockAsyncClickHouseConnectionPool(
             max_connections=10
         )
-        self.mock_async_clickhouse_connection = (
-            MockAsyncClickHouseConnection()
-        )
+        self.mock_async_clickhouse_connection = MockAsyncClickHouseConnection()
 
     def _setup_mock_async_clickhouse_module(self):
         """Set up mock async clickhouse module."""
+
         async def create_client_mock(**kwargs):
             return self.mock_async_clickhouse_connection
 
@@ -949,12 +912,12 @@ class TestAsyncClickHouseConnectionPoolConcurrency(
         )
         self.mock_module = patch(patch_path).start()
         self.mock_module.get_async_client = create_client_mock
-        
+
         # Also patch ASYNC_AVAILABLE to True
         patch(
             "db_connections.scr.all_db_connectors.connectors."
             "clickhouse.pool.ASYNC_AVAILABLE",
-            True
+            True,
         ).start()
 
     def tearDown(self):
@@ -998,6 +961,5 @@ class TestAsyncClickHouseConnectionPoolConcurrency(
         self.assertIsNotNone(conn_id_2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

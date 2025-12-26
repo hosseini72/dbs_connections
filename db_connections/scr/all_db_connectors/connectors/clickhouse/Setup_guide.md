@@ -20,23 +20,6 @@ pip install db_connections[clickhouse-async]
 pip install db_connections[clickhouse]
 ```
 
-## Dependencies
-
-Add these to your `pyproject.toml`:
-
-```toml
-[project.optional-dependencies]
-clickhouse-sync = [
-    "clickhouse-connect>=0.6.0",
-]
-clickhouse-async = [
-    "clickhouse-connect>=0.6.0",
-]
-clickhouse = [
-    "clickhouse-connect>=0.6.0",
-]
-```
-
 ## Quick Start
 
 ### Synchronous Usage

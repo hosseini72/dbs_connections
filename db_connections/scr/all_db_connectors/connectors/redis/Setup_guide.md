@@ -20,23 +20,6 @@ pip install db_connections[redis-async]
 pip install db_connections[redis]
 ```
 
-## Dependencies
-
-Add these to your `pyproject.toml`:
-
-```toml
-[project.optional-dependencies]
-redis-sync = [
-    "redis>=5.0.0",
-]
-redis-async = [
-    "redis[hiredis]>=5.0.0",
-]
-redis = [
-    "redis[hiredis]>=5.0.0",
-]
-```
-
 ## Quick Start
 
 ### Synchronous Usage
