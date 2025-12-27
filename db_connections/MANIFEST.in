@@ -1,48 +1,72 @@
-# Include license file
+# Include essential files
 include LICENSE
 include LICENCE
-
-# Include README
 include README.md
 
-# Include CHANGELOG if it exists
-include CHANGELOG.md
-
-# Include all Python source files
+# Include all Python source files in the main package
 recursive-include db_connections *.py
 
-# Include package data (if any)
-recursive-include db_connections/scr *.py
+# Exclude development and internal files (keep in GitHub, exclude from PyPI)
+exclude tox.ini
+exclude UPDATE_SUMMARY.md
+exclude PYPI_CHECKLIST.md
+exclude Makefile
+exclude .gitignore
 
-# Exclude test files
-global-exclude test_*.py
-global-exclude *_test.py
-global-exclude tests/
-
-# Exclude development files
-global-exclude .git*
-global-exclude .pytest_cache
-global-exclude .mypy_cache
-global-exclude .ruff_cache
-global-exclude __pycache__
-global-exclude *.pyc
-global-exclude *.pyo
-global-exclude *.pyd
-global-exclude .DS_Store
-global-exclude *.egg-info
-global-exclude build/
-global-exclude dist/
-global-exclude .tox/
-global-exclude .venv/
-global-exclude venv/
-global-exclude env/
-
-# Exclude documentation source (keep only built docs if needed)
+# Exclude directories not needed for end users
+prune tests/
 prune docs/
 prune examples/
 prune scripts/
 
-# Exclude setup guides from package (they're in the repo but not needed in package)
-prune scr/all_db_connectors/connectors/*/Setup_guide.md
-prune scr/all_db_connectors/connectors/*/*_usage.py
+# Exclude build artifacts and cache
+global-exclude __pycache__/
+global-exclude *.py[cod]
+global-exclude *$py.class
+global-exclude *.so
+global-exclude .Python
+global-exclude build/
+global-exclude develop-eggs/
+global-exclude dist/
+global-exclude downloads/
+global-exclude eggs/
+global-exclude .eggs/
+global-exclude lib/
+global-exclude lib64/
+global-exclude parts/
+global-exclude sdist/
+global-exclude var/
+global-exclude wheels/
+global-exclude *.egg-info/
+global-exclude .installed.cfg
+global-exclude *.egg
+
+# Exclude IDE and system files
+global-exclude .DS_Store
+global-exclude Thumbs.db
+global-exclude .vscode/
+global-exclude .idea/
+global-exclude *.swp
+global-exclude *.swo
+global-exclude *~
+
+# Exclude version control
+global-exclude .git/
+global-exclude .gitignore
+global-exclude .gitattributes
+
+# Exclude testing and linting cache
+global-exclude .pytest_cache/
+global-exclude .mypy_cache/
+global-exclude .ruff_cache/
+global-exclude .tox/
+global-exclude htmlcov/
+global-exclude .coverage
+global-exclude coverage.xml
+
+# Exclude virtual environments
+global-exclude venv/
+global-exclude .venv/
+global-exclude env/
+global-exclude .env
 
