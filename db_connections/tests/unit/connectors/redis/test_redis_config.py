@@ -255,6 +255,50 @@ class TestRedisPoolConfig(unittest.TestCase):
         self.assertEqual(config.port, 6379)
         self.assertEqual(config.db, 0)
 
+    def test_from_env_empty_url(self):
+        """Test from_env with empty REDIS_URL doesn't break."""
+        # Set REDIS_URL to empty string
+        os.environ["REDIS_URL"] = ""
+        os.environ["REDIS_HOST"] = "testhost"
+        os.environ["REDIS_PORT"] = "6380"
+
+        try:
+            config = RedisPoolConfig.from_env()
+
+            # Empty URL should be ignored, individual params used
+            self.assertIsNone(config.connection_string)
+            self.assertEqual(config.host, "testhost")
+            self.assertEqual(config.port, 6380)
+
+            # Should not raise TypeError when getting params
+            params = config.get_connection_params()
+            self.assertEqual(params["host"], "testhost")
+            self.assertEqual(params["port"], 6380)
+        finally:
+            # Cleanup
+            for key in ["URL", "HOST", "PORT"]:
+                os.environ.pop(f"REDIS_{key}", None)
+
+    def test_from_env_valid_url(self):
+        """Test from_env with valid REDIS_URL."""
+        os.environ["REDIS_URL"] = "redis://user:pass@urlhost:6381/3"
+
+        try:
+            config = RedisPoolConfig.from_env()
+
+            # URL should be used
+            self.assertEqual(
+                config.connection_string, "redis://user:pass@urlhost:6381/3"
+            )
+
+            # Should parse URL correctly
+            params = config.get_connection_params()
+            self.assertEqual(params["host"], "urlhost")
+            self.assertEqual(params["port"], 6381)
+            self.assertEqual(params["db"], 3)
+        finally:
+            os.environ.pop("REDIS_URL", None)
+
     def test_connection_url_overrides(self):
         """Test that connection_url overrides individual params."""
         config = RedisPoolConfig(
@@ -265,8 +309,12 @@ class TestRedisPoolConfig(unittest.TestCase):
 
         params = config.get_connection_params()
 
-        self.assertIn("url", params)
-        self.assertEqual(params["url"], "redis://user:pass@remote:6380/2")
+        # URL should be parsed into individual parameters
+        self.assertEqual(params["host"], "remote")
+        self.assertEqual(params["port"], 6380)
+        self.assertEqual(params["db"], 2)
+        self.assertEqual(params["username"], "user")
+        self.assertEqual(params["password"], "pass")
 
     def test_decode_responses(self):
         """Test decode_responses configuration."""

@@ -1,8 +1,15 @@
 """Redis-specific configuration."""
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from db_connections.scr.all_db_connectors.core import BasePoolConfig
+
+try:
+    from redis.connection import parse_url
+except ImportError:
+    # Fallback for older versions or if redis is not installed
+    parse_url = None
 
 
 @dataclass
@@ -219,8 +226,19 @@ class RedisPoolConfig(BasePoolConfig):
         Returns:
             Dictionary of connection parameters suitable for redis.Redis/redis.asyncio.Redis.
         """
-        if self.connection_string:
-            return {"url": self.connection_string}
+        # Only use connection_string if it's not None and not empty
+        if self.connection_string and self.connection_string.strip():
+            if parse_url is None:
+                raise ImportError(
+                    "redis package is required to parse connection URLs. "
+                    "Install it with: pip install redis"
+                )
+            # Parse the URL into individual connection parameters
+            # parse_url returns a ConnectionPool kwargs dict
+            url_params = parse_url(self.connection_string)
+            # Remove 'connection_class' if present as it's not needed for client creation
+            url_params.pop('connection_class', None)
+            return url_params
 
         params: Dict[str, Any] = {
             "host": self.host,
@@ -328,12 +346,16 @@ class RedisPoolConfig(BasePoolConfig):
         """
         import os
 
+        # Only use connection_string if it's set and not empty
+        connection_url = os.getenv(f"{prefix}URL")
+        connection_string = connection_url if connection_url else None
+
         return cls(
             host=os.getenv(f"{prefix}HOST", "localhost"),
             port=int(os.getenv(f"{prefix}PORT", "6379")),
             db=int(os.getenv(f"{prefix}DB", "0")),
             password=os.getenv(f"{prefix}PASSWORD"),
             username=os.getenv(f"{prefix}USERNAME"),
-            connection_string=os.getenv(f"{prefix}URL"),
+            connection_string=connection_string,
             ssl=os.getenv(f"{prefix}SSL", "false").lower() == "true",
         )
