@@ -320,12 +320,12 @@ async def get_users(conn = Depends(get_db)):
 
 For detailed setup and usage instructions for each database, see the Setup guides:
 
-- [PostgreSQL Setup Guide](scr/all_db_connectors/connectors/postgres/Setup_guide.md)
-- [Redis Setup Guide](scr/all_db_connectors/connectors/redis/Setup_guide.md)
-- [MongoDB Setup Guide](scr/all_db_connectors/connectors/mongodb/Setup_guide.md)
-- [ClickHouse Setup Guide](scr/all_db_connectors/connectors/clickhouse/Setup_guide.md)
-- [RabbitMQ Setup Guide](scr/all_db_connectors/connectors/rabbitmq/Setup_guide.md)
-- [Neo4j Setup Guide](scr/all_db_connectors/connectors/neo4j/Setup_guide.md)
+- [PostgreSQL Setup Guide](db_connections/scr/all_db_connectors/connectors/postgres/Setup_guide.md)
+- [Redis Setup Guide](db_connections/scr/all_db_connectors/connectors/redis/Setup_guide.md)
+- [MongoDB Setup Guide](db_connections/scr/all_db_connectors/connectors/mongodb/Setup_guide.md)
+- [ClickHouse Setup Guide](db_connections/scr/all_db_connectors/connectors/clickhouse/Setup_guide.md)
+- [RabbitMQ Setup Guide](db_connections/scr/all_db_connectors/connectors/rabbitmq/Setup_guide.md)
+- [Neo4j Setup Guide](db_connections/scr/all_db_connectors/connectors/neo4j/Setup_guide.md)
 
 ## Requirements
 
